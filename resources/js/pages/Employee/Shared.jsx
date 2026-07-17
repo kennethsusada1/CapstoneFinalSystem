@@ -1,0 +1,60 @@
+import { Link } from '@inertiajs/react';
+
+export const panelStyle = {
+    background: 'var(--admin-card)',
+    border: '1px solid var(--admin-border-strong)',
+    borderRadius: 19,
+    boxShadow: 'var(--admin-shadow)',
+};
+
+export function EmployeeStyles() {
+    return (
+        <style>{`
+            .emp-page { display: grid; gap: 1rem; }
+            .emp-hero { position: relative; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; min-height: 158px; padding: 1.5rem 1.65rem; border: 1px solid rgba(45,212,191,.24); border-radius: 22px; background: radial-gradient(circle at 85% 8%, rgba(251,146,60,.22), transparent 31%), linear-gradient(125deg, rgba(12,74,110,.96), rgba(15,23,42,.97) 58%, rgba(6,78,59,.78)); box-shadow: var(--admin-shadow); }
+            .emp-hero::after { content: ''; position: absolute; right: 12%; bottom: -94px; width: 215px; height: 215px; border: 1px solid rgba(255,255,255,.08); border-radius: 50%; box-shadow: 0 0 0 36px rgba(255,255,255,.022), 0 0 0 72px rgba(255,255,255,.012); }
+            .emp-kicker { color: #5eead4; font-size: .66rem; font-weight: 800; letter-spacing: .16em; }
+            .emp-hero h1 { margin: .42rem 0; color: #f0fdfa; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 500; letter-spacing: -.035em; }
+            .emp-hero p { max-width: 680px; margin: 0; color: #cbd5e1; font-size: .82rem; line-height: 1.65; }
+            .emp-hero-action { z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .72rem .92rem; color: #ccfbf1; border: 1px solid rgba(94,234,212,.25); border-radius: 12px; background: rgba(2,6,23,.42); text-decoration: none; font-size: .74rem; font-weight: 750; white-space: nowrap; }
+            .emp-stats { display: grid; grid-template-columns: repeat(4, minmax(145px, 1fr)); gap: .8rem; }
+            .emp-stat { display: flex; align-items: center; gap: .8rem; padding: .95rem 1rem; }.emp-stat-icon { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; color: var(--stat-color); border: 1px solid color-mix(in srgb, var(--stat-color) 30%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--stat-color) 10%, transparent); }.emp-stat div:last-child { display: grid; gap: .12rem; }.emp-stat span { color: var(--admin-text-muted); font-size: .68rem; }.emp-stat strong { color: var(--admin-text-primary); font-size: 1.35rem; }
+            .emp-panel { padding: 1rem 1.1rem; }.emp-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .85rem; }.emp-panel-head h2 { margin: 0; color: var(--admin-text-primary); font-size: .92rem; }.emp-panel-head p { margin: .2rem 0 0; color: var(--admin-text-muted); font-size: .7rem; }
+            .emp-grid-2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 1rem; }.emp-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+            .emp-list { display: grid; gap: .65rem; }.emp-item { padding: .82rem .9rem; border: 1px solid var(--admin-border); border-radius: 13px; background: rgba(45,212,191,.025); }.emp-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }.emp-title { color: var(--admin-text-primary); font-size: .78rem; font-weight: 750; }.emp-muted { color: var(--admin-text-muted); font-size: .69rem; line-height: 1.5; }.emp-copy { color: var(--admin-text-secondary); font-size: .75rem; line-height: 1.6; }
+            .emp-pill { display: inline-flex; align-items: center; width: fit-content; padding: .28rem .53rem; color: #99f6e4; border: 1px solid rgba(45,212,191,.22); border-radius: 999px; background: rgba(45,212,191,.08); color-scheme: dark; font-size: .62rem; font-weight: 750; text-transform: capitalize; white-space: nowrap; }.emp-pill option { color: #e2e8f0; background: #0f172a; }.emp-pill[data-tone='success'] { color: #86efac; border-color: rgba(34,197,94,.22); background: rgba(34,197,94,.09); }.emp-pill[data-tone='warning'] { color: #fde047; border-color: rgba(250,204,21,.22); background: rgba(250,204,21,.08); }.emp-pill[data-tone='danger'] { color: #fca5a5; border-color: rgba(239,68,68,.22); background: rgba(239,68,68,.08); }.emp-pill[data-tone='info'] { color: #7dd3fc; border-color: rgba(56,189,248,.22); background: rgba(56,189,248,.08); }
+            .emp-progress { height: 8px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.12); }.emp-progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0891b2, #2dd4bf, #fb923c); }
+            .emp-table-wrap { overflow-x: auto; }.emp-table { width: 100%; min-width: 720px; border-collapse: collapse; }.emp-table th { padding: .6rem .65rem; color: var(--admin-text-muted); font-size: .65rem; text-align: left; text-transform: uppercase; letter-spacing: .05em; }.emp-table td { padding: .75rem .65rem; color: var(--admin-text-secondary); border-top: 1px solid var(--admin-border); font-size: .73rem; }.emp-table td strong { color: var(--admin-text-primary); }
+            .emp-form { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }.emp-field { display: grid; gap: .34rem; }.emp-field.full { grid-column: 1 / -1; }.emp-field label { color: var(--admin-text-muted); font-size: .67rem; font-weight: 700; }.emp-field input, .emp-field textarea, .emp-field select { width: 100%; padding: .67rem .74rem; color: var(--admin-text-primary); border: 1px solid var(--admin-border-strong); border-radius: 11px; outline: none; background: var(--admin-bg-secondary); color-scheme: dark; font: inherit; font-size: .74rem; }.emp-field option { color: #e2e8f0; background: #0f172a; }.emp-field input:disabled { opacity: .65; }
+            .emp-button { display: inline-flex; align-items: center; justify-content: center; gap: .43rem; padding: .67rem .9rem; color: #fff; border: 0; border-radius: 11px; background: linear-gradient(135deg, #0891b2, #0f766e); font-size: .72rem; font-weight: 800; cursor: pointer; text-decoration: none; }.emp-button.secondary { color: var(--admin-text-primary); border: 1px solid var(--admin-border-strong); background: var(--admin-bg-secondary); }.emp-button:disabled { opacity: .6; cursor: wait; }
+            .emp-success { display: flex; align-items: center; gap: .5rem; padding: .72rem .85rem; color: #86efac; border: 1px solid rgba(34,197,94,.24); border-radius: 12px; background: rgba(34,197,94,.09); font-size: .74rem; }.emp-error { color: #fca5a5; font-size: .64rem; }.emp-empty { display: grid; min-height: 170px; place-items: center; align-content: center; gap: .35rem; color: var(--admin-text-muted); text-align: center; }.emp-empty i { color: #2dd4bf; font-size: 1.7rem; opacity: .75; }.emp-empty strong { color: var(--admin-text-primary); font-size: .8rem; }.emp-empty span { font-size: .68rem; }.emp-link { color: #5eead4; text-decoration: none; font-size: .7rem; font-weight: 750; }.emp-avatar { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; color: #ccfbf1; border: 1px solid rgba(45,212,191,.24); border-radius: 13px; background: linear-gradient(145deg, rgba(8,145,178,.5), rgba(15,23,42,.82)); font-size: .7rem; font-weight: 800; }
+            @media (max-width: 1050px) { .emp-stats { grid-template-columns: repeat(2, 1fr); }.emp-grid-2 { grid-template-columns: 1fr; }.emp-grid-3 { grid-template-columns: 1fr 1fr; } }
+            @media (max-width: 700px) { .emp-hero { align-items: flex-start; flex-direction: column; }.emp-hero-action { width: 100%; }.emp-panel-head { align-items: flex-start; flex-direction: column; }.emp-grid-3, .emp-form { grid-template-columns: 1fr; }.emp-field.full { grid-column: auto; } }
+            @media (max-width: 470px) { .emp-stats { grid-template-columns: 1fr; } }
+        `}</style>
+    );
+}
+
+export function PageHero({ kicker, title, description, href, action, icon = 'bi-arrow-right' }) {
+    return <section className="emp-hero"><div><div className="emp-kicker">{kicker}</div><h1>{title}</h1><p>{description}</p></div>{href && <Link className="emp-hero-action" href={href}><i className={`bi ${icon}`} />{action}</Link>}</section>;
+}
+
+export function StatCard({ label, value, icon, color = '#2dd4bf' }) {
+    return <div className="emp-stat" style={{ ...panelStyle, '--stat-color': color }}><div className="emp-stat-icon"><i className={`bi ${icon}`} /></div><div><span>{label}</span><strong>{value}</strong></div></div>;
+}
+
+export function Panel({ title, subtitle, action, children }) {
+    return <section className="emp-panel" style={panelStyle}>{(title || action) && <div className="emp-panel-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>}{children}</section>;
+}
+
+export function StatusPill({ children, tone = 'info' }) {
+    return <span className="emp-pill" data-tone={tone}>{children}</span>;
+}
+
+export function EmptyState({ icon = 'bi-inbox', title, text }) {
+    return <div className="emp-empty"><i className={`bi ${icon}`} /><strong>{title}</strong><span>{text}</span></div>;
+}
+
+export function Initials({ name = 'Employee' }) {
+    return <div className="emp-avatar">{name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</div>;
+}

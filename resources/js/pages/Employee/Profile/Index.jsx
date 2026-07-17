@@ -1,0 +1,17 @@
+import { useForm, usePage } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
+import { EmployeeStyles, Initials, PageHero, Panel, StatusPill } from '../Shared';
+
+export default function Index({ profile }) {
+    const { props } = usePage();
+    const form = useForm({ name: profile?.name ?? '', email: profile?.email ?? '', address: profile?.address ?? '' });
+    const submit = (event) => { event.preventDefault(); form.patch('/employee/profile', { preserveScroll: true }); };
+    return <AppLayout title="Employee Profile" description="Employee / Account Profile"><div className="emp-page">
+        <PageHero kicker="MY EMPLOYEE IDENTITY" title="Keep your learning profile current." description="Update your contact details and review the organizational information used across assessments, applications, and learning records." href="/settings/security" action="Security settings" icon="bi-shield-lock" />
+        {props?.flash?.success && <div className="emp-success"><i className="bi bi-check-circle-fill" />{props.flash.success}</div>}
+        <section className="emp-grid-2">
+            <Panel title="Profile Overview" subtitle="Organizational assignment"><div style={{ display: 'flex', alignItems: 'center', gap: '.8rem', paddingBottom: '1rem', borderBottom: '1px solid var(--admin-border)' }}><Initials name={profile.name} /><div><div className="emp-title">{profile.name}</div><div className="emp-muted">{profile.position || 'Employee'} | {profile.office || 'Office not assigned'}</div></div></div><div className="emp-list" style={{ marginTop: '.8rem' }}><div className="emp-item"><div className="emp-muted">EMPLOYEE ID</div><div className="emp-title" style={{ marginTop: '.25rem' }}>{profile.employee_id || 'Not assigned'}</div></div><div className="emp-item"><div className="emp-muted">EMPLOYMENT STATUS</div><StatusPill tone={profile.employment_status === 'Active' ? 'success' : 'warning'}>{profile.employment_status || 'Not assigned'}</StatusPill></div><div className="emp-item"><div className="emp-muted">POSITION</div><div className="emp-title" style={{ marginTop: '.25rem' }}>{profile.position || 'Not assigned'}</div></div></div></Panel>
+            <Panel title="Contact Information" subtitle="Editable employee account details"><form className="emp-form" onSubmit={submit}><div className="emp-field full"><label>Full name</label><input value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />{form.errors.name && <span className="emp-error">{form.errors.name}</span>}</div><div className="emp-field full"><label>Email address</label><input type="email" value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} />{form.errors.email && <span className="emp-error">{form.errors.email}</span>}</div><div className="emp-field full"><label>Address</label><textarea rows="4" value={form.data.address} onChange={(e) => form.setData('address', e.target.value)} placeholder="Mailing or home address" /></div><div className="emp-field"><label>Employee ID</label><input value={profile.employee_id || ''} disabled /></div><div className="emp-field"><label>Office</label><input value={profile.office || ''} disabled /></div><div className="emp-field full"><button className="emp-button" disabled={form.processing}><i className="bi bi-save" />{form.processing ? 'Saving...' : 'Save profile'}</button></div></form></Panel>
+        </section>
+    </div><EmployeeStyles /></AppLayout>;
+}

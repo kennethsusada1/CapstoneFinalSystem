@@ -1,0 +1,27 @@
+import { useForm, usePage } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
+import { EmployeeStyles, EmptyState, PageHero, Panel, StatCard, StatusPill } from '../Shared';
+
+export default function Index({ lapEntries, completedTrainings }) {
+    const { props } = usePage();
+    const form = useForm({ training_title: '', implementation_summary: '', learning_outcomes: '', status: 'submitted' });
+    const submit = (event) => { event.preventDefault(); form.post('/employee/learning-action-plan', { onSuccess: () => form.reset() }); };
+    return <AppLayout title="Learning Action Plan" description="Employee / Post-Training Application"><div className="emp-page">
+        <PageHero kicker="APPLY WHAT YOU LEARNED" title="Translate training into workplace results." description="Document how you will apply the learning, the outcomes you expect, and the progress of your post-training commitment." href="/employee/history" action="View training history" icon="bi-clock-history" />
+        {props?.flash?.success && <div className="emp-success"><i className="bi bi-check-circle-fill" />{props.flash.success}</div>}
+        <section className="emp-grid-3"><StatCard label="Eligible Trainings" value={(completedTrainings ?? []).length} icon="bi-mortarboard-fill" /><StatCard label="LAP Submitted" value={(lapEntries ?? []).filter((x) => x.status === 'submitted').length} icon="bi-send-check-fill" color="#38bdf8" /><StatCard label="LAP Completed" value={(lapEntries ?? []).filter((x) => x.status === 'completed').length} icon="bi-journal-check" color="#4ade80" /></section>
+        <section className="emp-grid-2">
+            <Panel title="Submit Learning Action Plan" subtitle="Capture your post-training implementation">
+                <form className="emp-form" onSubmit={submit}>
+                    <div className="emp-field full"><label>Completed training</label><select value={form.data.training_title} onChange={(e) => form.setData('training_title', e.target.value)}><option value="">Select completed training</option>{(completedTrainings ?? []).map((item) => <option key={item.id} value={item.training_title}>{item.training_title}</option>)}</select>{form.errors.training_title && <span className="emp-error">{form.errors.training_title}</span>}</div>
+                    <div className="emp-field full"><label>Implementation summary</label><textarea rows="5" value={form.data.implementation_summary} onChange={(e) => form.setData('implementation_summary', e.target.value)} placeholder="How will you apply the learning in your work?" />{form.errors.implementation_summary && <span className="emp-error">{form.errors.implementation_summary}</span>}</div>
+                    <div className="emp-field full"><label>Learning outcomes</label><textarea rows="4" value={form.data.learning_outcomes} onChange={(e) => form.setData('learning_outcomes', e.target.value)} placeholder="Expected or observed results" /></div>
+                    <div className="emp-field"><label>Submission status</label><select value={form.data.status} onChange={(e) => form.setData('status', e.target.value)}><option value="draft">Save as draft</option><option value="submitted">Submit for review</option><option value="completed">Mark completed</option></select></div>
+                    <div className="emp-field" style={{ alignContent: 'end' }}><button className="emp-button" disabled={form.processing}><i className="bi bi-save" />{form.processing ? 'Saving...' : 'Save LAP'}</button></div>
+                </form>
+            </Panel>
+            <Panel title="Eligible Trainings" subtitle="Completed or attended activities"><div className="emp-list">{(completedTrainings ?? []).length === 0 && <EmptyState icon="bi-calendar2-check" title="No eligible training yet" text="Completed or attended programs will become available here." />}{(completedTrainings ?? []).map((item) => <div className="emp-item" key={item.id}><div className="emp-row"><div className="emp-title">{item.training_title}</div><StatusPill tone="success">Eligible</StatusPill></div><div className="emp-muted" style={{ marginTop: '.3rem' }}>{item.training_type} | {item.completed_on || 'Attendance recorded'}</div></div>)}</div></Panel>
+        </section>
+        <Panel title="Learning Action Plan Records" subtitle="Submissions received by the Secretariat"><div className="emp-table-wrap"><table className="emp-table"><thead><tr><th>Training</th><th>Implementation</th><th>Outcomes</th><th>Submitted</th><th>Status</th></tr></thead><tbody>{(lapEntries ?? []).map((item) => <tr key={item.id}><td><strong>{item.training_title}</strong></td><td>{item.implementation_summary}</td><td>{item.learning_outcomes || 'Not specified'}</td><td>{item.submitted_on || 'Draft'}</td><td><StatusPill tone={item.status === 'completed' ? 'success' : item.status === 'draft' ? 'info' : 'warning'}>{item.status}</StatusPill></td></tr>)}</tbody></table>{(lapEntries ?? []).length === 0 && <EmptyState icon="bi-journal" title="No LAP records" text="Saved and submitted plans will appear here." />}</div></Panel>
+    </div><EmployeeStyles /></AppLayout>;
+}
