@@ -35,4 +35,23 @@ return [
         ],
     ],
 
+    // -----------------------------------------------------------------------
+    // PMS ↔ L&D Integration
+    // -----------------------------------------------------------------------
+
+    // Inbound: smart-pms calls our API with this token.
+    // We generate it; PMS stores it as LND_API_TOKEN in their .env.
+    'lnd' => [
+        'api_token'          => env('LND_API_TOKEN'),
+        'redirect_hmac_secret' => env('LND_REDIRECT_HMAC_SECRET'),
+    ],
+
+    // Outbound: we call PMS callback endpoint with PMS_CALLBACK_TOKEN.
+    // PMS generates it; we store it here.
+    'pms' => [
+        'base_url'       => env('PMS_BASE_URL'),
+        'callback_token' => env('PMS_CALLBACK_TOKEN'),
+        'timeout'        => env('PMS_TIMEOUT', 20),
+    ],
+
 ];

@@ -5,8 +5,10 @@ namespace App\Providers;
 use App\Http\Responses\RoleBasedLoginResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Contracts\LoginResponse;
@@ -36,6 +38,12 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Force HTTPS scheme when the app URL is https (e.g. behind ngrok or a reverse proxy).
+        // This ensures asset URLs use https:// and avoids mixed-content browser blocks.
+        if (str_starts_with(config('app.url', ''), 'https')) {
+            URL::forceScheme('https');
+        }
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

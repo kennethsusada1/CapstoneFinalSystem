@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
+ * @property int|null $training_referral_id
  * @property string|null $employee_id
  * @property string $training_title
  * @property string $training_type
@@ -25,9 +26,11 @@ use Illuminate\Support\Carbon;
  * @property bool $is_attended
  * @property Carbon|null $completed_on
  * @property-read User $user
+ * @property-read TrainingReferral|null $trainingReferral
  */
 #[Fillable([
     'user_id',
+    'training_referral_id',
     'employee_id',
     'training_title',
     'training_type',
@@ -62,5 +65,13 @@ class TrainingApplication extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<TrainingReferral, $this>
+     */
+    public function trainingReferral(): BelongsTo
+    {
+        return $this->belongsTo(TrainingReferral::class);
     }
 }

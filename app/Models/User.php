@@ -23,6 +23,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $address
  * @property string $email
  * @property string|null $employee_id
+ * @property int|null    $pms_user_id
  * @property string|null $office
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $activation_sent_at
@@ -36,7 +37,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  * @property-read EmployeeRecord|null $employeeRecord
  */
-#[Fillable(['name', 'address', 'email', 'employee_id', 'office', 'password', 'activation_sent_at', 'activation_token'])]
+#[Fillable(['name', 'address', 'email', 'employee_id', 'office', 'pms_user_id', 'password', 'activation_sent_at', 'activation_token'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -96,5 +97,15 @@ class User extends Authenticatable implements PasskeyUser
     public function employeeRecord(): HasOne
     {
         return $this->hasOne(EmployeeRecord::class, 'employee_id', 'employee_id');
+    }
+
+    /**
+     * The L&D trainee identity-map record for this user (when this user is a PMS-referred employee).
+     *
+     * @return HasOne<LndTrainee, $this>
+     */
+    public function lndTrainee(): HasOne
+    {
+        return $this->hasOne(LndTrainee::class, 'lnd_user_id');
     }
 }

@@ -5,6 +5,11 @@ import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+    server: {
+        // Allow requests from any ngrok tunnel domain
+        allowedHosts: 'all',
+        cors: true,
+    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],

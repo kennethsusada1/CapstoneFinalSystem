@@ -12,6 +12,7 @@ use App\Http\Controllers\Employee\EmployeeDashboardController;
 use App\Http\Controllers\Employee\EmployeeLearningController;
 use App\Http\Controllers\Employee\EmployeeProfileController;
 use App\Http\Controllers\HRDC\HrdcPortalController;
+use App\Http\Controllers\IntakeController;
 use App\Http\Controllers\Secretariat\SecretariatPortalController;
 use App\Http\Controllers\Supervisor\SupervisorLnaController;
 use App\Http\Controllers\Supervisor\SupervisorPortalController;
@@ -22,6 +23,10 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
 Route::redirect('/', '/login');
+
+// Public intake landing page — employees redirected here from smart-pms when training-locked.
+// No auth middleware: employee may not have an L&D account yet.
+Route::get('/intake', [IntakeController::class, 'show'])->name('intake');
 Route::get('/activate-account', function (Request $request) {
     if ($request->user()) {
         Auth::logout();

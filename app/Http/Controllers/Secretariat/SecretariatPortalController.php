@@ -8,6 +8,7 @@ use App\Models\LearningDevelopmentPlan;
 use App\Models\ProposedTrainingProgram;
 use App\Models\TrainingApplication;
 use App\Models\User;
+use App\Services\PmsCallbackService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -60,6 +61,38 @@ class SecretariatPortalController extends Controller
             'processed_at' => now(),
             'completed_on' => $validated['status'] === 'completed' ? ($trainingApplication->completed_on ?? now()->toDateString()) : null,
         ]);
+
+        // ---------------------------------------------------------------
+        // If this application is linked to a PMS referral and has just
+        // been marked completed, fire the outbound callback to smart-pms
+        // so the employee's PMS account gets unlocked.
+        // The callback is best-effort — failure is logged and stored on
+        // the referral (pms_notify_error) but does not fail this request.
+        // ---------------------------------------------------------------
+        if ($validated['status'] === 'completed' && $trainingApplication->training_referral_id !== null) {
+            $referral = $trainingApplication->trainingReferral;
+
+            if ($referral !== null) {
+                $completedOn = $trainingApplication->completed_on?->toIso8601String()
+                    ?? now()->toIso8601String();
+
+                // Collect any per-course completion records already attached
+                $courses = $referral->coursesCompleted
+                    ->map(fn ($c) => [
+                        'course_code'  => $c->course_code,
+                        'title'        => $c->title,
+                        'completed_at' => $c->completed_at?->toIso8601String(),
+                    ])
+                    ->toArray();
+
+                app(PmsCallbackService::class)->notifyComplete(
+                    referral:          $referral,
+                    completedAt:       $completedOn,
+                    coursesCompleted:  $courses,
+                    trainerRemarks:    $validated['process_remarks'] ?? null,
+                );
+            }
+        }
 
         return back()->with('success', 'Training application status updated successfully.');
     }
