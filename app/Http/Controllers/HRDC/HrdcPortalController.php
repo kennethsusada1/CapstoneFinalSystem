@@ -174,13 +174,13 @@ class HrdcPortalController extends Controller
     {
         $plans = LearningDevelopmentPlan::query()
             ->where('status', 'submitted')
-            ->with(['submitter', 'programs.reviewer'])
+            ->with(['submitter', 'trainingApplication.user', 'trainingApplication.learningNeedsAnalysis.reviewer', 'programs.reviewer'])
             ->latest('submitted_at')
             ->get();
 
         $plans->each(fn (LearningDevelopmentPlan $plan) => $this->ensurePrograms($plan));
 
-        return $plans->load(['submitter', 'programs.reviewer']);
+        return $plans->load(['submitter', 'trainingApplication.user', 'trainingApplication.learningNeedsAnalysis.reviewer', 'programs.reviewer']);
     }
 
     private function ensurePrograms(LearningDevelopmentPlan $plan): void
@@ -213,6 +213,21 @@ class HrdcPortalController extends Controller
             'review_status' => $status,
             'reviewed_at' => now(),
         ]);
+
+        if ($plan->trainingApplication && $plan->trainingApplication->status !== 'completed') {
+            $applicationStatus = match ($status) {
+                'approved', 'partially-approved' => 'ongoing',
+                'disapproved' => 'rejected',
+                default => 'applied',
+            };
+
+            $plan->trainingApplication->update([
+                'status' => $applicationStatus,
+                'process_remarks' => $status === 'disapproved'
+                    ? ($programs->pluck('review_remarks')->filter()->implode(' ') ?: 'The proposed training program was disapproved by HRDC.')
+                    : $plan->trainingApplication->process_remarks,
+            ]);
+        }
     }
 
     /**
@@ -236,6 +251,13 @@ class HrdcPortalController extends Controller
             'approved_count' => $plan->programs->where('status', 'approved')->count(),
             'disapproved_count' => $plan->programs->where('status', 'disapproved')->count(),
             'pending_count' => $plan->programs->where('status', 'pending')->count(),
+            'training_application_id' => $plan->training_application_id,
+            'employee_name' => $plan->trainingApplication?->user?->name,
+            'employee_id' => $plan->trainingApplication?->employee_id,
+            'training_title' => $plan->trainingApplication?->training_title,
+            'lna_focus_area' => $plan->trainingApplication?->learningNeedsAnalysis?->focus_area,
+            'supervisor_remarks' => $plan->trainingApplication?->learningNeedsAnalysis?->review_remarks,
+            'supervisor_reviewed_by' => $plan->trainingApplication?->learningNeedsAnalysis?->reviewer?->name,
         ];
     }
 
@@ -250,6 +272,8 @@ class HrdcPortalController extends Controller
             'plan_title' => $program->plan->title,
             'planning_year' => $program->plan->planning_year,
             'submitted_by' => $program->plan->submitter->name,
+            'employee_name' => $program->plan->trainingApplication?->user?->name,
+            'employee_id' => $program->plan->trainingApplication?->employee_id,
             'title' => $program->title,
             'status' => $program->status,
             'review_remarks' => $program->review_remarks,

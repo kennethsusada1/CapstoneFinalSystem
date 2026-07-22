@@ -7,6 +7,7 @@ use App\Models\LearningActionPlan;
 use App\Models\LearningDevelopmentPlan;
 use App\Models\ProposedTrainingProgram;
 use App\Models\TrainingApplication;
+use App\Models\TrainingReferral;
 use App\Models\User;
 use App\Services\PmsCallbackService;
 use Illuminate\Http\RedirectResponse;
@@ -31,8 +32,8 @@ class SecretariatPortalController extends Controller
             'recentPlans' => $plans->take(5)->map(fn (LearningActionPlan $plan) => $this->lapRow($plan))->values(),
             'programs' => $this->programCatalog(),
             'activityMix' => [
-                ['label' => 'Pending requests', 'value' => $applications->where('status', 'applied')->count(), 'color' => '#facc15'],
-                ['label' => 'Approved / ongoing', 'value' => $applications->where('status', 'ongoing')->count(), 'color' => '#38bdf8'],
+                ['label' => 'Pending processing', 'value' => $applications->where('secretariat_status', 'pending')->count(), 'color' => '#facc15'],
+                ['label' => 'Processed / for HRDC', 'value' => $applications->where('secretariat_status', 'processed')->where('status', 'applied')->count(), 'color' => '#38bdf8'],
                 ['label' => 'Completed', 'value' => $applications->where('status', 'completed')->count(), 'color' => '#34d399'],
             ],
         ]);
@@ -40,7 +41,10 @@ class SecretariatPortalController extends Controller
 
     public function applications(): Response
     {
-        $applications = TrainingApplication::query()->with('user')->latest()->get();
+        $applications = TrainingApplication::query()
+            ->with(['user', 'learningNeedsAnalysis.reviewer', 'learningDevelopmentPlan'])
+            ->latest()
+            ->get();
 
         return Inertia::render('Secretariat/Applications/Index', [
             'applications' => $this->applicationRows($applications),
@@ -50,17 +54,30 @@ class SecretariatPortalController extends Controller
     public function processApplication(Request $request, TrainingApplication $trainingApplication): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['applied', 'ongoing', 'completed', 'rejected'])],
-            'process_remarks' => ['nullable', 'string', 'max:1000'],
+            'secretariat_status' => ['required', Rule::in(['pending', 'processed', 'returned'])],
+            'activity_status' => ['nullable', Rule::in(['ongoing', 'completed'])],
+            'process_remarks' => [
+                $request->string('secretariat_status')->toString() === 'returned' ? 'required' : 'nullable',
+                'string',
+                'max:1000',
+            ],
         ]);
 
-        $trainingApplication->update([
-            'status' => $validated['status'],
+        $updates = [
+            'secretariat_status' => $validated['secretariat_status'],
             'process_remarks' => $validated['process_remarks'] ?? null,
             'processed_by' => $request->user()->id,
             'processed_at' => now(),
-            'completed_on' => $validated['status'] === 'completed' ? ($trainingApplication->completed_on ?? now()->toDateString()) : null,
-        ]);
+        ];
+
+        if (isset($validated['activity_status']) && in_array($trainingApplication->status, ['ongoing', 'completed'], true)) {
+            $updates['status'] = $validated['activity_status'];
+            $updates['completed_on'] = $validated['activity_status'] === 'completed'
+                ? ($trainingApplication->completed_on ?? now()->toDateString())
+                : null;
+        }
+
+        $trainingApplication->update($updates);
 
         // ---------------------------------------------------------------
         // If this application is linked to a PMS referral and has just
@@ -69,38 +86,43 @@ class SecretariatPortalController extends Controller
         // The callback is best-effort — failure is logged and stored on
         // the referral (pms_notify_error) but does not fail this request.
         // ---------------------------------------------------------------
-        if ($validated['status'] === 'completed' && $trainingApplication->training_referral_id !== null) {
+        if (($validated['activity_status'] ?? null) === 'completed' && $trainingApplication->training_referral_id !== null) {
             $referral = $trainingApplication->trainingReferral;
 
             if ($referral !== null) {
                 $completedOn = $trainingApplication->completed_on?->toIso8601String()
                     ?? now()->toIso8601String();
 
-                // Collect any per-course completion records already attached
-                $courses = $referral->coursesCompleted
-                    ->map(fn ($c) => [
-                        'course_code'  => $c->course_code,
-                        'title'        => $c->title,
-                        'completed_at' => $c->completed_at?->toIso8601String(),
-                    ])
-                    ->toArray();
-
                 app(PmsCallbackService::class)->notifyComplete(
-                    referral:          $referral,
-                    completedAt:       $completedOn,
-                    coursesCompleted:  $courses,
-                    trainerRemarks:    $validated['process_remarks'] ?? null,
+                    referral: $referral,
+                    completedAt: $completedOn,
+                    coursesCompleted: $this->completedCourses($referral),
+                    trainerRemarks: $validated['process_remarks'] ?? null,
                 );
             }
         }
 
-        return back()->with('success', 'Training application status updated successfully.');
+        return back()->with('success', $validated['secretariat_status'] === 'processed'
+            ? 'Training application processed. The Secretariat can now prepare its L&D Plan for HRDC.'
+            : 'Training application processing status updated.');
     }
 
     public function ldPlans(): Response
     {
         return Inertia::render('Secretariat/LearningDevelopmentPlans/Index', [
-            'plans' => LearningDevelopmentPlan::query()->with('submitter')->latest()->get()->map(fn (LearningDevelopmentPlan $plan) => $this->ldPlanRow($plan)),
+            'plans' => LearningDevelopmentPlan::query()
+                ->with(['submitter', 'trainingApplication.user'])
+                ->latest()
+                ->get()
+                ->map(fn (LearningDevelopmentPlan $plan) => $this->ldPlanRow($plan)),
+            'processedApplications' => TrainingApplication::query()
+                ->with('user')
+                ->where('secretariat_status', 'processed')
+                ->where('status', 'applied')
+                ->whereDoesntHave('learningDevelopmentPlan')
+                ->latest('processed_at')
+                ->get()
+                ->map(fn (TrainingApplication $application) => $this->applicationRow($application)),
             'programs' => $this->programCatalog(),
             'currentYear' => now()->year,
         ]);
@@ -109,6 +131,7 @@ class SecretariatPortalController extends Controller
     public function storeLdPlan(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'training_application_id' => ['required', 'integer'],
             'title' => ['required', 'string', 'max:255'],
             'planning_year' => ['required', 'digits:4'],
             'objectives' => ['required', 'string', 'max:5000'],
@@ -117,23 +140,35 @@ class SecretariatPortalController extends Controller
             'status' => ['required', Rule::in(['draft', 'submitted'])],
         ]);
 
+        $application = TrainingApplication::query()
+            ->whereKey($validated['training_application_id'])
+            ->where('secretariat_status', 'processed')
+            ->where('status', 'applied')
+            ->whereDoesntHave('learningDevelopmentPlan')
+            ->first();
+
+        if (! $application) {
+            return back()->withErrors([
+                'training_application_id' => 'Select a processed training application that does not yet have an L&D Plan.',
+            ]);
+        }
+
         $plan = LearningDevelopmentPlan::query()->create([
             ...$validated,
+            'training_application_id' => $application->id,
             'submitted_by' => $request->user()->id,
             'submitted_at' => $validated['status'] === 'submitted' ? now() : null,
         ]);
 
-        collect(preg_split('/\r\n|\r|\n|;/', $validated['priority_programs']) ?: [])
-            ->map(fn (string $title) => trim($title))
-            ->filter()
-            ->unique()
-            ->each(fn (string $title) => ProposedTrainingProgram::query()->create([
-                'learning_development_plan_id' => $plan->id,
-                'title' => $title,
-                'status' => 'pending',
-            ]));
+        ProposedTrainingProgram::query()->create([
+            'learning_development_plan_id' => $plan->id,
+            'title' => $application->training_title,
+            'status' => 'pending',
+        ]);
 
-        return back()->with('success', 'Learning and Development Plan saved successfully.');
+        return back()->with('success', $validated['status'] === 'submitted'
+            ? 'Learning and Development Plan submitted to HRDC for the proposed training program decision.'
+            : 'Learning and Development Plan saved as draft.');
     }
 
     public function trainingMonitor(): Response
@@ -266,7 +301,7 @@ class SecretariatPortalController extends Controller
     {
         return [
             'requests' => $applications->count(),
-            'pending_requests' => $applications->where('status', 'applied')->count(),
+            'pending_requests' => $applications->where('secretariat_status', 'pending')->count(),
             'approved_activities' => $applications->where('status', 'ongoing')->count(),
             'lap_received' => $plans->where('receipt_status', 'received')->count(),
             'ld_plans' => $ldPlans->count(),
@@ -299,9 +334,15 @@ class SecretariatPortalController extends Controller
             'end_date' => $application->end_date?->toDateString(),
             'progress_percent' => $application->progress_percent,
             'status' => $application->status,
+            'secretariat_status' => $application->secretariat_status,
             'is_attended' => $application->is_attended,
             'process_remarks' => $application->process_remarks,
             'processed_at' => $application->processed_at?->toDateTimeString(),
+            'lna_focus_area' => $application->learningNeedsAnalysis?->focus_area,
+            'lna_priority_level' => $application->learningNeedsAnalysis?->priority_level,
+            'supervisor_remarks' => $application->learningNeedsAnalysis?->review_remarks,
+            'supervisor_reviewed_by' => $application->learningNeedsAnalysis?->reviewer?->name,
+            'has_ld_plan' => $application->learningDevelopmentPlan !== null,
         ];
     }
 
@@ -340,6 +381,9 @@ class SecretariatPortalController extends Controller
             'status' => $plan->status,
             'submitted_by' => $plan->submitter->name,
             'submitted_at' => $plan->submitted_at?->toDateTimeString(),
+            'training_application_id' => $plan->training_application_id,
+            'employee_name' => $plan->trainingApplication?->user?->name,
+            'training_title' => $plan->trainingApplication?->training_title,
         ];
     }
 
@@ -453,5 +497,29 @@ class SecretariatPortalController extends Controller
         $ascii = preg_replace('/[^\x20-\x7E]/', '', $value) ?? '';
 
         return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $ascii);
+    }
+
+    /**
+     * @return list<array{course_code: string, title: string, completed_at: string}>
+     */
+    private function completedCourses(TrainingReferral $referral): array
+    {
+        $courses = [];
+
+        foreach ($referral->coursesCompleted as $course) {
+            if (blank($course->course_code)
+                || blank($course->title)
+                || $course->completed_at === null) {
+                continue;
+            }
+
+            $courses[] = [
+                'course_code' => $course->course_code,
+                'title' => $course->title,
+                'completed_at' => $course->completed_at->toIso8601String(),
+            ];
+        }
+
+        return $courses;
     }
 }

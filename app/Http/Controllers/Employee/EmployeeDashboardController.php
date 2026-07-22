@@ -7,13 +7,16 @@ use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
 use Carbon\CarbonPeriod;
-use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class EmployeeDashboardController extends Controller
 {
+    /**
+     * @return array<string, mixed>
+     */
     protected function recommendationProfile(LearningNeedsAnalysis $entry): array
     {
         $context = strtolower(trim($entry->focus_area.' '.$entry->competency_gap.' '.$entry->proposed_intervention));
@@ -53,6 +56,12 @@ class EmployeeDashboardController extends Controller
         ];
     }
 
+    /**
+     * @param  Collection<int, array<string, mixed>>  $recommendations
+     * @param  Collection<int, TrainingApplication>  $trainings
+     * @param  Collection<int, LearningActionPlan>  $lapEntries
+     * @return Collection<int, array<string, string>>
+     */
     protected function notifications(Collection $recommendations, Collection $trainings, Collection $lapEntries): Collection
     {
         $items = collect();
@@ -65,6 +74,7 @@ class EmployeeDashboardController extends Controller
                     'title' => 'Recommended Training',
                     'message' => "Undergo {$recommendation['predicted_training_recommendation']} for {$recommendation['focus_area']}.",
                 ]);
+
                 continue;
             }
 
@@ -103,13 +113,14 @@ class EmployeeDashboardController extends Controller
             ->get();
         $lapEntries = LearningActionPlan::query()->where('user_id', $user->id)->latest()->get();
         $recommendations = $lnaEntries
+            ->where('status', 'reviewed')
             ->map(fn (LearningNeedsAnalysis $item) => $this->recommendationProfile($item))
             ->unique(fn (array $item) => $item['focus_area'].'|'.$item['predicted_training_recommendation'])
             ->values();
 
         $completedByMonth = $trainings
-            ->filter(fn (TrainingApplication $item) => $item->completed_on)
-            ->groupBy(fn (TrainingApplication $item) => $item->completed_on?->format('Y-m'));
+            ->filter(fn (TrainingApplication $item) => $item->completed_on !== null)
+            ->groupBy(fn (TrainingApplication $item) => $item->completed_on?->format('Y-m') ?? 'unknown');
 
         return Inertia::render('Employee/Dashboard', [
             'stats' => [
@@ -138,7 +149,7 @@ class EmployeeDashboardController extends Controller
                 ],
             ],
             'charts' => [
-                'monthlyCompletion' => collect($period)->map(fn ($date) => [
+                'monthlyCompletion' => collect(iterator_to_array($period, false))->map(fn ($date) => [
                     'label' => $date->format('M'),
                     'completed' => $completedByMonth->get($date->format('Y-m'))?->count() ?? 0,
                 ])->values(),
@@ -160,9 +171,9 @@ class EmployeeDashboardController extends Controller
             ])->values(),
             'notifications' => $this->notifications($recommendations, $trainings, $lapEntries),
             'highlights' => [
-                'Answer your Learning Needs Analysis assessment and identify competency gaps.',
-                'Review prescribed skills gaps and predicted training recommendations.',
-                'Submit training applications and complete your Learning Action Plan after training.',
+                'Submit your Learning Needs Analysis assessment for supervisor evaluation.',
+                'Apply for training after your supervisor endorses the recommended intervention.',
+                'Track Secretariat processing and the final HRDC program decision.',
             ],
         ]);
     }

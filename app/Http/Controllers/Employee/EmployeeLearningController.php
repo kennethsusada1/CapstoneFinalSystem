@@ -14,6 +14,9 @@ use Inertia\Response;
 
 class EmployeeLearningController extends Controller
 {
+    /**
+     * @return array<string, mixed>
+     */
     protected function recommendationProfile(LearningNeedsAnalysis $entry): array
     {
         $context = strtolower(trim($entry->focus_area.' '.$entry->competency_gap.' '.$entry->proposed_intervention));
@@ -78,14 +81,25 @@ class EmployeeLearningController extends Controller
         ];
     }
 
+    /**
+     * @param  Collection<int, LearningNeedsAnalysis>  $entries
+     * @return Collection<int, array<string, mixed>>
+     */
     protected function recommendationsFor(Collection $entries): Collection
     {
         return $entries
+            ->where('status', 'reviewed')
             ->map(fn (LearningNeedsAnalysis $entry) => $this->recommendationProfile($entry))
             ->unique(fn (array $recommendation) => $recommendation['focus_area'].'|'.$recommendation['predicted_training_recommendation'])
             ->values();
     }
 
+    /**
+     * @param  Collection<int, array<string, mixed>>  $recommendations
+     * @param  Collection<int, TrainingApplication>  $trainings
+     * @param  Collection<int, LearningActionPlan>  $lapEntries
+     * @return Collection<int, array<string, string>>
+     */
     protected function employeeNotifications(Collection $recommendations, Collection $trainings, Collection $lapEntries): Collection
     {
         $notifications = collect();
@@ -191,9 +205,14 @@ class EmployeeLearningController extends Controller
                     'end_date' => $item->end_date?->toDateString(),
                     'progress_percent' => $item->progress_percent,
                     'status' => $item->status,
+                    'secretariat_status' => $item->secretariat_status,
                     'is_attended' => $item->is_attended,
                 ]),
-            'recommendations' => $recommendations,
+            'recommendations' => $recommendations
+                ->reject(fn (array $recommendation) => $trainings->contains(
+                    fn (TrainingApplication $training) => $training->learning_needs_analysis_id === $recommendation['lna_id'],
+                ))
+                ->values(),
         ]);
     }
 
@@ -212,6 +231,7 @@ class EmployeeLearningController extends Controller
                 'end_date' => $trainingApplication->end_date?->toDateString(),
                 'progress_percent' => $trainingApplication->progress_percent,
                 'status' => $trainingApplication->status,
+                'secretariat_status' => $trainingApplication->secretariat_status,
                 'process_remarks' => $trainingApplication->process_remarks,
                 'processed_at' => $trainingApplication->processed_at?->toDateTimeString(),
                 'is_attended' => $trainingApplication->is_attended,
@@ -223,35 +243,57 @@ class EmployeeLearningController extends Controller
     public function storeTraining(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'training_title' => ['required', 'string', 'max:255'],
+            'lna_id' => ['required', 'integer'],
             'training_type' => ['required', 'string', 'in:Invitational,In-house'],
             'provider' => ['nullable', 'string', 'max:255'],
             'office' => ['nullable', 'string', 'max:255'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
-            'progress_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
-            'status' => ['nullable', 'string', 'in:applied,ongoing,completed'],
-            'is_attended' => ['nullable', 'boolean'],
         ]);
 
         $user = $request->user();
+        $lna = LearningNeedsAnalysis::query()
+            ->whereKey($validated['lna_id'])
+            ->where('user_id', $user->id)
+            ->where('status', 'reviewed')
+            ->first();
+
+        if (! $lna) {
+            return back()->withErrors([
+                'lna_id' => 'Select an LNA assessment that has been evaluated and endorsed by your supervisor.',
+            ]);
+        }
+
+        $alreadyApplied = TrainingApplication::query()
+            ->where('user_id', $user->id)
+            ->where('learning_needs_analysis_id', $lna->id)
+            ->exists();
+
+        if ($alreadyApplied) {
+            return back()->withErrors([
+                'lna_id' => 'A training application has already been submitted for this reviewed LNA assessment.',
+            ]);
+        }
+
+        $recommendation = $this->recommendationProfile($lna);
 
         TrainingApplication::query()->create([
             'user_id' => $user->id,
+            'learning_needs_analysis_id' => $lna->id,
             'employee_id' => $user->employee_id,
-            'training_title' => $validated['training_title'],
+            'training_title' => $recommendation['predicted_training_recommendation'],
             'training_type' => $validated['training_type'],
             'provider' => $validated['provider'] ?? null,
             'office' => $validated['office'] ?? $user->office,
             'start_date' => $validated['start_date'] ?? null,
             'end_date' => $validated['end_date'] ?? null,
-            'progress_percent' => $validated['progress_percent'] ?? 0,
-            'status' => $validated['status'] ?? 'applied',
-            'is_attended' => (bool) ($validated['is_attended'] ?? false),
-            'completed_on' => ($validated['status'] ?? null) === 'completed' ? now()->toDateString() : null,
+            'progress_percent' => 0,
+            'status' => 'applied',
+            'secretariat_status' => 'pending',
+            'is_attended' => false,
         ]);
 
-        return back()->with('success', 'Training application submitted successfully.');
+        return back()->with('success', 'Training application submitted to the Secretariat for processing.');
     }
 
     public function learningNeedsAnalysis(Request $request): Response
@@ -273,6 +315,8 @@ class EmployeeLearningController extends Controller
                     'priority_level' => $item->priority_level,
                     'status' => $item->status,
                     'submitted_on' => $item->submitted_on?->toDateString(),
+                    'review_remarks' => $item->review_remarks,
+                    'reviewed_at' => $item->reviewed_at?->toDateTimeString(),
                     ...$this->recommendationProfile($item),
                 ]),
             'recommendations' => $recommendations,
@@ -335,7 +379,7 @@ class EmployeeLearningController extends Controller
             'submitted_on' => now()->toDateString(),
         ]);
 
-        return back()->with('success', 'LNA assessment submitted successfully. Your prescribed skills gap and predicted training recommendation are now available.');
+        return back()->with('success', 'LNA assessment submitted successfully. It is now waiting for your supervisor evaluation.');
     }
 
     public function storeLap(Request $request): RedirectResponse

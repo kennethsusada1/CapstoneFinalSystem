@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $submitted_by
+ * @property int|null $training_application_id
  * @property string $title
  * @property string $planning_year
  * @property string $objectives
@@ -24,10 +25,12 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $reviewed_at
  * @property Carbon|null $submitted_at
  * @property-read User $submitter
+ * @property-read TrainingApplication|null $trainingApplication
  * @property-read Collection<int, ProposedTrainingProgram> $programs
  */
 #[Fillable([
     'submitted_by',
+    'training_application_id',
     'title',
     'planning_year',
     'objectives',
@@ -56,6 +59,14 @@ class LearningDevelopmentPlan extends Model
     public function submitter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    /**
+     * @return BelongsTo<TrainingApplication, $this>
+     */
+    public function trainingApplication(): BelongsTo
+    {
+        return $this->belongsTo(TrainingApplication::class);
     }
 
     /**

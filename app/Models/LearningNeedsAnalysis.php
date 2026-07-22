@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -22,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $submitted_on
  * @property-read User $user
  * @property-read User|null $reviewer
+ * @property-read Collection<int, TrainingApplication> $trainingApplications
  */
 #[Fillable([
     'user_id',
@@ -60,5 +63,13 @@ class LearningNeedsAnalysis extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    /**
+     * @return HasMany<TrainingApplication, $this>
+     */
+    public function trainingApplications(): HasMany
+    {
+        return $this->hasMany(TrainingApplication::class);
     }
 }
