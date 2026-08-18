@@ -217,3 +217,54 @@ test('admin cannot assign system admin through managed role update', function ()
         ->assertSessionHasErrors('role')
         ->assertRedirect();
 });
+
+test('admin can delete a managed user account', function () {
+    $admin = User::factory()->create([
+        'employee_id' => 'ADM-001',
+    ]);
+    $admin->syncRoles(['system-admin']);
+
+    $employee = EmployeeRecord::query()->create([
+        'employee_id' => 'EMP-600',
+        'first_name' => 'Delete',
+        'last_name' => 'Me',
+        'email' => 'delete.me@example.com',
+        'office' => 'Operations',
+        'position' => 'Staff',
+        'employment_status' => 'Active',
+        'source' => 'Manual Admin Entry',
+    ]);
+    $user = User::factory()->create([
+        'name' => 'Delete Me',
+        'employee_id' => $employee->employee_id,
+        'email' => $employee->email,
+    ]);
+    $user->syncRoles(['employee']);
+
+    $this->actingAs($admin)
+        ->delete("/admin/users/{$user->id}")
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect(User::query()->find($user->id))->toBeNull()
+        ->and(EmployeeRecord::query()->find($employee->id))->toBeNull();
+});
+
+test('admin cannot delete a system administrator account', function () {
+    $admin = User::factory()->create([
+        'employee_id' => 'ADM-001',
+    ]);
+    $admin->syncRoles(['system-admin']);
+
+    $otherAdmin = User::factory()->create([
+        'employee_id' => 'ADM-002',
+    ]);
+    $otherAdmin->syncRoles(['system-admin']);
+
+    $this->actingAs($admin)
+        ->delete("/admin/users/{$otherAdmin->id}")
+        ->assertSessionHasErrors('user')
+        ->assertRedirect();
+
+    expect(User::query()->find($otherAdmin->id))->not->toBeNull();
+});

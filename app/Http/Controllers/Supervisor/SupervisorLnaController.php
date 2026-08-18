@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Supervisor;
 use App\Http\Controllers\Controller;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\User;
+use App\Services\StaticLnaAnalyticsService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,32 +32,45 @@ class SupervisorLnaController extends Controller
 
         return Inertia::render('Supervisor/LearningNeedsAnalysis/Index', [
             'teamOffice' => $teamOffice,
+            'supervisorName' => $supervisor->name,
             'summary' => $this->summary($entries),
             'lnaEntries' => $entries->map(function (LearningNeedsAnalysis $entry) {
-                $analytics = $this->analyticsFor($entry);
-
                 return [
                     'id' => $entry->id,
                     'employee_name' => $entry->user->name,
                     'employee_id' => $entry->employee_id,
                     'office' => $this->effectiveOffice($entry->user),
                     'position' => $entry->user->employeeRecord?->position,
+                    'core_functions' => $entry->core_functions ?? [],
+                    'support_functions' => $entry->support_functions ?? [],
+                    'skill_assessments' => $entry->skill_assessments ?? [],
+                    'supervisor_skill_assessments' => $entry->supervisor_skill_assessments ?? [],
+                    'preferred_learning_methods' => $entry->preferred_learning_methods ?? [],
+                    'preferred_learning_methods_other' => $entry->preferred_learning_methods_other,
+                    'assessment_methods' => $entry->assessment_methods ?? [],
+                    'employee_signature' => $entry->employee_signature,
                     'focus_area' => $entry->focus_area,
                     'competency_gap' => $entry->competency_gap,
                     'proposed_intervention' => $entry->proposed_intervention,
                     'priority_level' => $entry->priority_level,
                     'status' => $entry->status,
                     'submitted_on' => $entry->submitted_on?->toDateString(),
+                    'supervisor_assessment_methods' => $entry->supervisor_assessment_methods ?? [],
+                    'supervisor_signature' => $entry->supervisor_signature,
+                    'supervisor_signed_on' => $entry->supervisor_signed_on?->toDateString(),
                     'review_remarks' => $entry->review_remarks,
                     'reviewed_at' => $entry->reviewed_at?->toDateTimeString(),
                     'reviewed_by' => $entry->reviewer?->name,
-                    ...$analytics,
                 ];
             }),
         ]);
     }
 
-    public function update(Request $request, LearningNeedsAnalysis $learningNeedsAnalysis): RedirectResponse
+    public function update(
+        Request $request,
+        LearningNeedsAnalysis $learningNeedsAnalysis,
+        StaticLnaAnalyticsService $analyticsService,
+    ): RedirectResponse
     {
         $learningNeedsAnalysis->loadMissing('user.employeeRecord');
         $supervisor = User::query()
@@ -73,14 +87,42 @@ class SupervisorLnaController extends Controller
                 'string',
                 'max:1000',
             ],
+            'supervisor_skill_assessments' => ['nullable', 'array'],
+            'supervisor_skill_assessments.*' => ['required', 'string', 'in:N/A,1,2,3,4'],
+            'supervisor_assessment_methods' => ['nullable', 'array'],
+            'supervisor_assessment_methods.*' => [
+                'string',
+                'in:Supervisor Assessment,Questionnaire,Feedback,Observation,Reflection,Customer Feedback,Performance Review,Performance Evaluation (MPOR)',
+            ],
+            'supervisor_signature' => ['nullable', 'string', 'max:255'],
+            'supervisor_signed_on' => ['nullable', 'date'],
         ]);
 
-        $learningNeedsAnalysis->update([
+        $learningNeedsAnalysis->fill([
             'status' => $validated['status'],
             'review_remarks' => $validated['review_remarks'] ?? null,
+            'supervisor_skill_assessments' => $validated['supervisor_skill_assessments'] ?? [],
+            'supervisor_assessment_methods' => $validated['supervisor_assessment_methods'] ?? [],
+            'supervisor_signature' => $validated['supervisor_signature'] ?? $supervisor->name,
+            'supervisor_signed_on' => $validated['supervisor_signed_on'] ?? now()->toDateString(),
             'reviewed_by' => $supervisor->id,
             'reviewed_at' => now(),
         ]);
+
+        if ($validated['status'] === 'reviewed') {
+            $learningNeedsAnalysis->fill([
+                ...$analyticsService->generate($learningNeedsAnalysis),
+                'analytics_generated_at' => now(),
+            ]);
+        } else {
+            $learningNeedsAnalysis->fill([
+                'predictive_skills_gap' => null,
+                'prescriptive_training_recommendation' => null,
+                'analytics_generated_at' => null,
+            ]);
+        }
+
+        $learningNeedsAnalysis->save();
 
         $message = $validated['status'] === 'reviewed'
             ? 'The employee LNA assessment has been marked as reviewed.'
@@ -93,16 +135,7 @@ class SupervisorLnaController extends Controller
     {
         $employee = $entry->user;
 
-        if (! $employee->hasRole('employee')) {
-            return false;
-        }
-
-        $supervisorOffice = $this->effectiveOffice($supervisor);
-        $employeeOffice = $this->effectiveOffice($employee);
-
-        return $supervisorOffice !== null
-            && $employeeOffice !== null
-            && strcasecmp($supervisorOffice, $employeeOffice) === 0;
+        return $employee->hasRole('employee');
     }
 
     private function effectiveOffice(User $user): ?string
@@ -135,80 +168,4 @@ class SupervisorLnaController extends Controller
         ];
     }
 
-    /**
-     * @return array<string, array<string, int|string>>
-     */
-    private function analyticsFor(LearningNeedsAnalysis $entry): array
-    {
-        $context = strtolower(trim($entry->focus_area.' '.$entry->competency_gap.' '.$entry->proposed_intervention));
-
-        $profile = match (true) {
-            str_contains($context, 'lead') || str_contains($context, 'supervis') => [
-                'category' => 'Leadership and Supervision',
-                'skills_gap' => 'Leadership, coaching, delegation, and team supervision',
-                'training' => 'Supervisory Development Program',
-                'delivery' => 'In-house workshop with guided coaching',
-                'timeframe' => 'Within the next 3 months',
-            ],
-            str_contains($context, 'data') || str_contains($context, 'excel') || str_contains($context, 'digital') || str_contains($context, 'system') => [
-                'category' => 'Digital Productivity and Data Management',
-                'skills_gap' => 'Digital tools, records management, and data analysis',
-                'training' => 'Digital Productivity and Data Management Workshop',
-                'delivery' => 'Hands-on workshop and workplace application',
-                'timeframe' => 'Within the next 2 months',
-            ],
-            str_contains($context, 'commun') || str_contains($context, 'writing') || str_contains($context, 'report') || str_contains($context, 'present') => [
-                'category' => 'Communication and Technical Writing',
-                'skills_gap' => 'Written communication, presentation, and report preparation',
-                'training' => 'Technical Writing and Presentation Skills Training',
-                'delivery' => 'Instructor-led training with output review',
-                'timeframe' => 'Within the next 3 months',
-            ],
-            str_contains($context, 'customer') || str_contains($context, 'client') || str_contains($context, 'service') => [
-                'category' => 'Customer Service Excellence',
-                'skills_gap' => 'Client handling, service delivery, and stakeholder engagement',
-                'training' => 'Customer Service Excellence Program',
-                'delivery' => 'Scenario-based workshop and coaching',
-                'timeframe' => 'Within the next 2 months',
-            ],
-            str_contains($context, 'plan') || str_contains($context, 'project') || str_contains($context, 'monitor') => [
-                'category' => 'Planning and Project Monitoring',
-                'skills_gap' => 'Planning, implementation monitoring, and target management',
-                'training' => 'Project Planning and Monitoring Workshop',
-                'delivery' => 'Workshop with an applied project plan',
-                'timeframe' => 'Within the next 3 months',
-            ],
-            default => [
-                'category' => 'Core Functional Capability',
-                'skills_gap' => 'Role-specific functional competency requiring development',
-                'training' => 'Functional Competency Enhancement Training',
-                'delivery' => 'In-house training with supervisor coaching',
-                'timeframe' => 'Within the next 6 months',
-            ],
-        };
-
-        $priorityWeight = match ($entry->priority_level) {
-            'high' => 90,
-            'medium' => 65,
-            default => 40,
-        };
-
-        return [
-            'descriptive_analytics' => [
-                'competency_category' => $profile['category'],
-                'priority_score' => $priorityWeight,
-                'assessment_finding' => ucfirst($entry->priority_level).' priority gap identified in '.$entry->focus_area.'.',
-            ],
-            'prescriptive_analytics' => [
-                'skills_gap' => $profile['skills_gap'],
-                'recommended_action' => $profile['delivery'],
-                'target_timeframe' => $profile['timeframe'],
-            ],
-            'predictive_analytics' => [
-                'training_recommendation' => $profile['training'],
-                'match_score' => min(96, $priorityWeight + 6),
-                'expected_outcome' => 'Improved workplace performance in '.$profile['category'].'.',
-            ],
-        ];
-    }
 }

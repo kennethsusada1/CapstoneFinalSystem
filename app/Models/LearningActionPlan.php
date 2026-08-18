@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $user_id
+ * @property int|null $training_application_id
  * @property string|null $employee_id
  * @property string $training_title
  * @property string $implementation_summary
@@ -21,9 +22,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $received_at
  * @property Carbon|null $submitted_on
  * @property-read User $user
+ * @property-read TrainingApplication|null $trainingApplication
  */
 #[Fillable([
     'user_id',
+    'training_application_id',
     'employee_id',
     'training_title',
     'implementation_summary',
@@ -51,5 +54,13 @@ class LearningActionPlan extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<TrainingApplication, $this>
+     */
+    public function trainingApplication(): BelongsTo
+    {
+        return $this->belongsTo(TrainingApplication::class);
     }
 }

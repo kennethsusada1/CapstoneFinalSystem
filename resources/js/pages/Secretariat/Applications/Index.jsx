@@ -45,9 +45,21 @@ function ProcessForm({ application }) {
 
 export default function Index({ applications }) {
     const { props } = usePage();
-    const [filter, setFilter] = useState('all');
+    const [activeQueue, setActiveQueue] = useState('pending');
+    const [query, setQuery] = useState('');
     const [expanded, setExpanded] = useState(null);
-    const visible = (applications ?? []).filter((item) => filter === 'all' || item.secretariat_status === filter);
+    const filtered = (applications ?? []).filter((item) => {
+        const haystack = `${item.employee_name} ${item.employee_id} ${item.office} ${item.training_title} ${item.training_type}`.toLowerCase();
+        return haystack.includes(query.trim().toLowerCase());
+    });
+    const pendingApplications = filtered.filter((item) => item.secretariat_status === 'pending');
+    const reviewedApplications = filtered.filter((item) => ['processed', 'returned'].includes(item.secretariat_status));
+    const visible = activeQueue === 'pending' ? pendingApplications : reviewedApplications;
+
+    const changeQueue = (queue) => {
+        setActiveQueue(queue);
+        setExpanded(null);
+    };
 
     return (
         <AppLayout title="Training Applications" description="Secretariat / Application Processing">
@@ -60,9 +72,43 @@ export default function Index({ applications }) {
                     <StatCard label="Processed" value={(applications ?? []).filter((item) => item.secretariat_status === 'processed').length} icon="bi-check-circle" color="#38bdf8" />
                     <StatCard label="With L&D Plan" value={(applications ?? []).filter((item) => item.has_ld_plan).length} icon="bi-journal-check" color="#34d399" />
                 </section>
-                <Panel title="Employee Requests" subtitle="Training applications backed by supervisor-reviewed LNA assessments" action={<select className="sec-pill" value={filter} onChange={(event) => setFilter(event.target.value)} style={{ outline: 0 }}><option value="all">All processing statuses</option><option value="pending">Pending</option><option value="processed">Processed</option><option value="returned">Returned</option></select>}>
+                <Panel
+                    title={activeQueue === 'pending' ? 'For Review' : 'Reviewed Employee Requests'}
+                    subtitle={activeQueue === 'pending' ? 'Employee requests waiting for Secretariat processing' : 'Processed and returned employee requests'}
+                    action={<div className="sec-search"><i className="bi bi-search sec-muted" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search employee or training" /></div>}
+                >
+                    <div className="sec-queue-tabs" role="tablist" aria-label="Employee request queues">
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={activeQueue === 'pending'}
+                            className={activeQueue === 'pending' ? 'is-active' : ''}
+                            onClick={() => changeQueue('pending')}
+                        >
+                            <i className="bi bi-inbox-fill" />
+                            <span>For Review</span>
+                            <strong>{pendingApplications.length}</strong>
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={activeQueue === 'reviewed'}
+                            className={activeQueue === 'reviewed' ? 'is-active' : ''}
+                            onClick={() => changeQueue('reviewed')}
+                        >
+                            <i className="bi bi-check2-circle" />
+                            <span>Reviewed</span>
+                            <strong>{reviewedApplications.length}</strong>
+                        </button>
+                    </div>
                     <div className="sec-list">
-                        {visible.length === 0 && <EmptyState title="No matching requests" text="Change the filter or wait for employee applications." />}
+                        {visible.length === 0 && (
+                            <EmptyState
+                                icon={activeQueue === 'pending' ? 'bi-clipboard2-check' : 'bi-archive'}
+                                title={activeQueue === 'pending' ? 'No employee requests for review' : 'No reviewed employee requests yet'}
+                                text={query.trim() ? 'Try a different employee name or training title.' : activeQueue === 'pending' ? 'New employee requests will appear here.' : 'Processed requests will be stored here.'}
+                            />
+                        )}
                         {visible.map((item) => (
                             <article className="sec-item" key={item.id}>
                                 <button type="button" onClick={() => setExpanded(expanded === item.id ? null : item.id)} style={{ width: '100%', padding: 0, border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer' }}>
@@ -92,6 +138,15 @@ export default function Index({ applications }) {
                     </div>
                 </Panel>
             </div>
+            <style>{`
+                .sec-queue-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: .85rem; border: 1px solid var(--admin-border); border-radius: 12px; overflow: hidden; background: rgba(245,158,11,.025); }
+                .sec-queue-tabs button { display: flex; align-items: center; justify-content: center; gap: .45rem; padding: .72rem .8rem; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--admin-text-muted); font-size: .7rem; font-weight: 750; cursor: pointer; }
+                .sec-queue-tabs button:hover { color: var(--admin-text-primary); background: rgba(245,158,11,.05); }
+                .sec-queue-tabs button.is-active { border-bottom-color: #f59e0b; color: #fcd34d; background: rgba(245,158,11,.08); }
+                .sec-queue-tabs button strong { display: grid; min-width: 23px; height: 21px; padding: 0 .3rem; place-items: center; border-radius: 999px; background: rgba(148,163,184,.13); color: inherit; font-size: .62rem; }
+                .sec-queue-tabs button.is-active strong { background: rgba(245,158,11,.15); }
+                @media (max-width: 700px) { .sec-queue-tabs { width: 100%; } }
+            `}</style>
             <SecretariatStyles />
         </AppLayout>
     );

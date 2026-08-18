@@ -8,6 +8,7 @@ use App\Models\EmployeeRecord;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -270,12 +271,16 @@ class AdminUserController extends Controller
 
         $userName = $user->name;
 
-        $user->syncRoles([]);
-        $user->delete();
+        DB::transaction(function () use ($user, $employeeRecord): void {
+            // Remove role links explicitly because model_id is polymorphic and
+            // cannot rely on a foreign-key cascade.
+            $user->syncRoles([]);
+            $user->delete();
 
-        if ($employeeRecord && ! User::query()->where('employee_id', $employeeRecord->employee_id)->exists()) {
-            $employeeRecord->delete();
-        }
+            if ($employeeRecord && ! User::query()->where('employee_id', $employeeRecord->employee_id)->exists()) {
+                $employeeRecord->delete();
+            }
+        });
 
         return back()->with('success', "{$userName} was deleted from user management.");
     }

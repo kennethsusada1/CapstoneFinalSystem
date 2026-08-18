@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
+use App\Services\StaticLnaAnalyticsService;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,41 +20,7 @@ class EmployeeDashboardController extends Controller
      */
     protected function recommendationProfile(LearningNeedsAnalysis $entry): array
     {
-        $context = strtolower(trim($entry->focus_area.' '.$entry->competency_gap.' '.$entry->proposed_intervention));
-
-        $profile = match (true) {
-            str_contains($context, 'lead') || str_contains($context, 'supervis') => [
-                'skill_gap' => 'Leadership, coaching, and team supervision capability',
-                'training_title' => 'Supervisory Development Program',
-            ],
-            str_contains($context, 'data') || str_contains($context, 'excel') || str_contains($context, 'digital') || str_contains($context, 'system') => [
-                'skill_gap' => 'Digital tools, records management, and data analysis capability',
-                'training_title' => 'Digital Productivity and Data Management Workshop',
-            ],
-            str_contains($context, 'commun') || str_contains($context, 'writing') || str_contains($context, 'report') || str_contains($context, 'present') => [
-                'skill_gap' => 'Written communication, presentation, and report preparation capability',
-                'training_title' => 'Technical Writing and Presentation Skills Training',
-            ],
-            str_contains($context, 'customer') || str_contains($context, 'client') || str_contains($context, 'service') => [
-                'skill_gap' => 'Client handling, service delivery, and stakeholder engagement capability',
-                'training_title' => 'Customer Service Excellence Program',
-            ],
-            str_contains($context, 'plan') || str_contains($context, 'project') || str_contains($context, 'monitor') => [
-                'skill_gap' => 'Planning, implementation monitoring, and target management capability',
-                'training_title' => 'Project Planning and Monitoring Workshop',
-            ],
-            default => [
-                'skill_gap' => 'Role-specific functional competency requiring further development',
-                'training_title' => 'Functional Competency Enhancement Training',
-            ],
-        };
-
-        return [
-            'focus_area' => $entry->focus_area,
-            'priority_level' => $entry->priority_level,
-            'prescribed_skills_gap' => $profile['skill_gap'],
-            'predicted_training_recommendation' => $profile['training_title'],
-        ];
+        return app(StaticLnaAnalyticsService::class)->recommendation($entry);
     }
 
     /**
@@ -67,12 +34,12 @@ class EmployeeDashboardController extends Controller
         $items = collect();
 
         foreach ($recommendations as $recommendation) {
-            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['predicted_training_recommendation']);
+            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['prescriptive_training_recommendation']);
 
             if (! $matchedTraining) {
                 $items->push([
                     'title' => 'Recommended Training',
-                    'message' => "Undergo {$recommendation['predicted_training_recommendation']} for {$recommendation['focus_area']}.",
+                    'message' => "Proceed with {$recommendation['prescriptive_training_recommendation']} for {$recommendation['focus_area']}.",
                 ]);
 
                 continue;
@@ -113,9 +80,12 @@ class EmployeeDashboardController extends Controller
             ->get();
         $lapEntries = LearningActionPlan::query()->where('user_id', $user->id)->latest()->get();
         $recommendations = $lnaEntries
-            ->where('status', 'reviewed')
+            ->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
+                && $entry->analytics_generated_at !== null
+                && $entry->predictive_skills_gap !== null
+                && $entry->prescriptive_training_recommendation !== null)
             ->map(fn (LearningNeedsAnalysis $item) => $this->recommendationProfile($item))
-            ->unique(fn (array $item) => $item['focus_area'].'|'.$item['predicted_training_recommendation'])
+            ->unique(fn (array $item) => $item['focus_area'].'|'.$item['prescriptive_training_recommendation'])
             ->values();
 
         $completedByMonth = $trainings
@@ -133,7 +103,7 @@ class EmployeeDashboardController extends Controller
             ],
             'progressCards' => [
                 [
-                    'label' => 'Prescribed Skills Gaps',
+                    'label' => 'Predictive Skills Gaps',
                     'value' => $recommendations->count(),
                     'suffix' => '',
                 ],

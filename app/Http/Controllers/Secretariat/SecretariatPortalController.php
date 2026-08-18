@@ -194,6 +194,12 @@ class SecretariatPortalController extends Controller
 
     public function processLap(Request $request, LearningActionPlan $learningActionPlan): RedirectResponse
     {
+        if (! in_array($learningActionPlan->status, ['submitted', 'completed'], true)) {
+            return back()->withErrors([
+                'receipt_status' => 'Only a submitted Learning Action Plan can be received or returned by the Secretariat.',
+            ]);
+        }
+
         $validated = $request->validate([
             'receipt_status' => ['required', Rule::in(['pending', 'received', 'returned'])],
             'receipt_remarks' => ['nullable', 'string', 'max:1000'],
@@ -211,19 +217,24 @@ class SecretariatPortalController extends Controller
 
     public function reports(): Response
     {
-        $applications = TrainingApplication::query()->with('user')->latest()->get();
+        $applications = TrainingApplication::query()
+            ->with('user')
+            ->whereIn('status', ['ongoing', 'completed'])
+            ->latest()
+            ->get();
         $plans = LearningActionPlan::query()->with('user')->latest()->get();
+        $reportableApplications = $this->reportableApplications($applications, $plans);
 
         return Inertia::render('Secretariat/Reports/Index', [
             'summary' => $this->reportSummary($applications, $plans),
-            'activities' => $applications->groupBy('training_title')->map(fn ($items, $title) => [
+            'activities' => $reportableApplications->groupBy('training_title')->map(fn ($items, $title) => [
                 'training_title' => $title,
                 'participants' => $items->count(),
-                'approved' => $items->whereIn('status', ['ongoing', 'completed'])->count(),
+                'approved' => $items->count(),
                 'completed' => $items->where('status', 'completed')->count(),
                 'average_progress' => (int) round($items->avg('progress_percent') ?? 0),
             ])->values(),
-            'offices' => $applications->groupBy(fn (TrainingApplication $item) => $item->office ?: $item->user->office ?: $item->user->employeeRecord?->office ?: 'Unassigned')
+            'offices' => $reportableApplications->groupBy(fn (TrainingApplication $item) => $item->office ?: $item->user->office ?: $item->user->employeeRecord?->office ?: 'Unassigned')
                 ->map(fn ($items, $office) => ['office' => $office, 'applications' => $items->count(), 'completed' => $items->where('status', 'completed')->count()])
                 ->sortByDesc('applications')
                 ->values(),
@@ -232,26 +243,30 @@ class SecretariatPortalController extends Controller
 
     public function exportReport(): HttpResponse
     {
-        $applications = TrainingApplication::query()->with('user')->latest()->get();
-        $approved = $applications->whereIn('status', ['ongoing', 'completed']);
-        $completed = $applications->where('status', 'completed')->count();
-        $completionRate = $approved->isEmpty() ? 0 : (int) round(($completed / $approved->count()) * 100);
+        $applications = TrainingApplication::query()
+            ->with('user')
+            ->whereIn('status', ['ongoing', 'completed'])
+            ->latest()
+            ->get();
+        $plans = LearningActionPlan::query()->latest()->get();
+        $reportableApplications = $this->reportableApplications($applications, $plans);
+        $completed = $reportableApplications->count();
+        $completionRate = $applications->isEmpty() ? 0 : (int) round(($completed / $applications->count()) * 100);
         $lines = [
             'SMART L&D',
             'TERMINAL TRAINING ACTIVITY REPORT',
             'Generated: '.now()->format('F d, Y h:i A'),
             '',
             'SUMMARY',
-            'Total applications: '.$applications->count(),
-            'Approved activities: '.$approved->count(),
-            'Completed activities: '.$completed,
-            'Completion rate: '.$completionRate.'%',
+            'Approved activities: '.$applications->count(),
+            'Reportable completed activities: '.$completed,
+            'Terminal report readiness: '.$completionRate.'%',
             '',
             'TRAINING ACTIVITY DETAILS',
             'Employee | Employee ID | Office | Training | Status | Progress | Schedule',
         ];
 
-        foreach ($applications as $application) {
+        foreach ($reportableApplications as $application) {
             $office = $application->office ?: $application->user->office ?: $application->user->employeeRecord?->office ?: 'Unassigned';
             $schedule = ($application->start_date?->toDateString() ?: 'TBA').' - '.($application->end_date?->toDateString() ?: 'TBA');
             $lines[] = implode(' | ', [
@@ -395,15 +410,34 @@ class SecretariatPortalController extends Controller
     private function reportSummary($applications, $plans): array
     {
         $approved = $applications->whereIn('status', ['ongoing', 'completed']);
+        $reportable = $this->reportableApplications($approved, $plans);
 
         return [
-            'total_applications' => $applications->count(),
+            'total_applications' => $reportable->count(),
             'approved_activities' => $approved->count(),
             'completed_activities' => $applications->where('status', 'completed')->count(),
             'lap_submissions' => $plans->count(),
             'lap_received' => $plans->where('receipt_status', 'received')->count(),
             'completion_rate' => $approved->isEmpty() ? 0 : (int) round(($applications->where('status', 'completed')->count() / $approved->count()) * 100),
         ];
+    }
+
+    /**
+     * @param  Collection<int, TrainingApplication>  $applications
+     * @param  Collection<int, LearningActionPlan>  $plans
+     * @return Collection<int, TrainingApplication>
+     */
+    private function reportableApplications(Collection $applications, Collection $plans): Collection
+    {
+        return $applications
+            ->where('status', 'completed')
+            ->filter(fn (TrainingApplication $application): bool => $plans->contains(
+                fn (LearningActionPlan $plan): bool => $plan->user_id === $application->user_id
+                    && ($plan->training_application_id === $application->id
+                        || ($plan->training_application_id === null && $plan->training_title === $application->training_title))
+                    && $plan->receipt_status === 'received',
+            ))
+            ->values();
     }
 
     /**

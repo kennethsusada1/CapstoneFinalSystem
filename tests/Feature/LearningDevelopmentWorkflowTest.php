@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\EmployeeRecord;
+use App\Models\LearningActionPlan;
 use App\Models\LearningDevelopmentPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\ProposedTrainingProgram;
@@ -243,4 +244,80 @@ test('employee is notified when hrdc disapproves the proposed training program',
             'body' => 'The proposal requires a revised budget and implementation schedule.',
             'url' => "/employee/training-applications/{$application->id}",
         ]);
+});
+
+test('employee cannot submit a lap before training completion', function () {
+    $employee = makeWorkflowUser('employee', 'EMP-305', 'Operations');
+
+    TrainingApplication::query()->create([
+        'user_id' => $employee->id,
+        'employee_id' => $employee->employee_id,
+        'training_title' => 'Technical Writing and Presentation Skills Training',
+        'training_type' => 'In-house',
+        'office' => $employee->office,
+        'status' => 'ongoing',
+        'secretariat_status' => 'processed',
+        'is_attended' => false,
+    ]);
+
+    $this->actingAs($employee)
+        ->post('/employee/learning-action-plan', [
+            'training_application_id' => TrainingApplication::query()->sole()->id,
+            'training_title' => 'Technical Writing and Presentation Skills Training',
+            'implementation_summary' => 'Apply the training to monthly reports.',
+            'learning_outcomes' => 'Clearer and more accurate reports.',
+            'status' => 'submitted',
+        ])
+        ->assertSessionHasErrors('training_title');
+
+    expect(LearningActionPlan::query()->count())->toBe(0);
+});
+
+test('completed training becomes reportable after secretariat receives the lap', function () {
+    $employee = makeWorkflowUser('employee', 'EMP-306', 'Operations');
+    $secretariat = makeWorkflowUser('secretariat', 'SEC-306', 'Human Resources');
+    $training = TrainingApplication::query()->create([
+        'user_id' => $employee->id,
+        'employee_id' => $employee->employee_id,
+        'training_title' => 'Technical Writing and Presentation Skills Training',
+        'training_type' => 'In-house',
+        'office' => $employee->office,
+        'status' => 'completed',
+        'secretariat_status' => 'processed',
+        'progress_percent' => 100,
+        'is_attended' => true,
+        'completed_on' => now()->toDateString(),
+    ]);
+
+    $this->actingAs($employee)
+        ->post('/employee/learning-action-plan', [
+            'training_application_id' => $training->id,
+            'training_title' => $training->training_title,
+            'implementation_summary' => 'Apply the training to monthly reports.',
+            'learning_outcomes' => 'Clearer and more accurate reports.',
+            'status' => 'submitted',
+        ])
+        ->assertRedirect();
+
+    $lap = LearningActionPlan::query()->sole();
+
+    $this->actingAs($secretariat)
+        ->get('/secretariat/reports')
+        ->assertInertia(fn ($page) => $page
+            ->where('summary.total_applications', 0)
+            ->has('activities', 0));
+
+    $this->actingAs($secretariat)
+        ->patch("/secretariat/lap-submissions/{$lap->id}", [
+            'receipt_status' => 'received',
+            'receipt_remarks' => 'Complete LAP received.',
+        ])
+        ->assertRedirect();
+
+    $this->actingAs($secretariat)
+        ->get('/secretariat/reports')
+        ->assertInertia(fn ($page) => $page
+            ->where('summary.total_applications', 1)
+            ->where('activities.0.training_title', $training->training_title)
+            ->where('activities.0.completed', 1));
 });

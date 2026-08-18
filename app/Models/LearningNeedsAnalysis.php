@@ -13,14 +13,29 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $user_id
  * @property string|null $employee_id
+ * @property string|null $ipcr_rating
+ * @property array<int, string>|null $core_functions
+ * @property array<int, string>|null $support_functions
+ * @property array<string, string>|null $skill_assessments
+ * @property array<string, string>|null $supervisor_skill_assessments
+ * @property array<int, string>|null $preferred_learning_methods
+ * @property string|null $preferred_learning_methods_other
+ * @property array<int, string>|null $assessment_methods
+ * @property array<int, string>|null $supervisor_assessment_methods
+ * @property string|null $employee_signature
+ * @property string|null $supervisor_signature
+ * @property Carbon|null $supervisor_signed_on
  * @property string $focus_area
  * @property string $competency_gap
+ * @property string|null $predictive_skills_gap
+ * @property string|null $prescriptive_training_recommendation
  * @property string $proposed_intervention
  * @property string $priority_level
  * @property string $status
  * @property string|null $review_remarks
  * @property int|null $reviewed_by
  * @property Carbon|null $reviewed_at
+ * @property Carbon|null $analytics_generated_at
  * @property Carbon|null $submitted_on
  * @property-read User $user
  * @property-read User|null $reviewer
@@ -29,14 +44,29 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'user_id',
     'employee_id',
+    'ipcr_rating',
+    'core_functions',
+    'support_functions',
+    'skill_assessments',
+    'supervisor_skill_assessments',
+    'preferred_learning_methods',
+    'preferred_learning_methods_other',
+    'assessment_methods',
+    'supervisor_assessment_methods',
+    'employee_signature',
+    'supervisor_signature',
+    'supervisor_signed_on',
     'focus_area',
     'competency_gap',
+    'predictive_skills_gap',
+    'prescriptive_training_recommendation',
     'proposed_intervention',
     'priority_level',
     'status',
     'review_remarks',
     'reviewed_by',
     'reviewed_at',
+    'analytics_generated_at',
     'submitted_on',
 ])]
 class LearningNeedsAnalysis extends Model
@@ -46,6 +76,15 @@ class LearningNeedsAnalysis extends Model
         return [
             'submitted_on' => 'date',
             'reviewed_at' => 'datetime',
+            'analytics_generated_at' => 'datetime',
+            'core_functions' => 'array',
+            'support_functions' => 'array',
+            'skill_assessments' => 'array',
+            'supervisor_skill_assessments' => 'array',
+            'preferred_learning_methods' => 'array',
+            'assessment_methods' => 'array',
+            'supervisor_assessment_methods' => 'array',
+            'supervisor_signed_on' => 'date',
         ];
     }
 

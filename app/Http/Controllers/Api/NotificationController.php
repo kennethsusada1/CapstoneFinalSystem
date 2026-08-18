@@ -83,22 +83,11 @@ class NotificationController extends Controller
      */
     private function supervisorNotifications(User $supervisor): Collection
     {
-        $office = trim((string) ($supervisor->office ?: $supervisor->employeeRecord?->office));
-
-        if ($office === '') {
-            return collect();
-        }
-
         return LearningNeedsAnalysis::query()
             ->with('user.employeeRecord')
             ->where('status', 'submitted')
             ->latest('submitted_on')
             ->get()
-            ->filter(function (LearningNeedsAnalysis $entry) use ($office) {
-                $employeeOffice = trim((string) ($entry->user->office ?: $entry->user->employeeRecord?->office));
-
-                return $employeeOffice !== '' && strcasecmp($employeeOffice, $office) === 0;
-            })
             ->take(20)
             ->map(fn (LearningNeedsAnalysis $entry) => $this->notification(
                 100000 + $entry->id,

@@ -62,7 +62,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     const header = roleHeaders[role] ?? roleHeaders.employee;
     const links = linkSets[role] ?? linkSets.employee;
     const showFull = !collapsed || (typeof window !== 'undefined' && window.innerWidth < 768);
-    const isActive = (href) => url === href || url.startsWith(`${href}/`);
+    const currentPath = url.split('?')[0].replace(/\/+$/, '') || '/';
+    const activeHref = links
+        .filter(({ href }) => currentPath === href || currentPath.startsWith(`${href}/`))
+        .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+    const isActive = (href) => href === activeHref;
 
     return (
         <aside className={`admin-sidebar${collapsed ? ' sb-collapsed' : ''}${mobileOpen ? ' sb-mobile-open' : ''}`}>
@@ -89,15 +93,6 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
             <nav className="sb-nav">
                 {links.map(({ href, label, icon }) => {
-                    if (href === '/employee/training-applications') {
-                        return (
-                            <a key={href} href={href} className={`sb-link${isActive(href) ? ' sb-link-active' : ''}`} title={label}>
-                                <i className={`bi ${icon} sb-link-icon`} />
-                                {showFull && <span>{label}</span>}
-                            </a>
-                        );
-                    }
-
                     return (
                         <Link key={href} href={href} className={`sb-link${isActive(href) ? ' sb-link-active' : ''}`} title={label}>
                             <i className={`bi ${icon} sb-link-icon`} />

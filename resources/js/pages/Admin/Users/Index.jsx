@@ -1,7 +1,6 @@
-import { useForm, usePage } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import AppLayout from '@/Layouts/AppLayout';
-import { useConfirm } from '@/components/ConfirmDialog';
 import { AdminStyles, PageHero } from '../Shared';
 
 const cardStyle = {
@@ -34,16 +33,17 @@ const buttonStyle = {
 
 export default function Index({ users, employees, mailer, assignableRoles }) {
     const { props } = usePage();
-    const { confirm } = useConfirm();
     const success = props?.flash?.success;
     const [showModal, setShowModal] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
+    const [pendingDelete, setPendingDelete] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
     const [selectedRoles, setSelectedRoles] = useState(
         Object.fromEntries((users ?? []).map((user) => [user.id, user.is_manageable ? user.roles?.[0] || 'employee' : user.roles?.[0] || ''])),
     );
     const activationForm = useForm({ employee_id: '', role: 'employee' });
     const roleForm = useForm({ role: 'employee' });
     const manualForm = useForm({ name: '', role: 'employee', email: '', office: '' });
-    const deleteForm = useForm({});
 
     const submitManual = (e) => {
         e.preventDefault();
@@ -99,16 +99,17 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
             .patch(`/admin/users/${row.id}/role`);
     };
 
-    const removeAccount = async (row) => {
-        const approved = await confirm({
-            title: 'Delete record?',
-            message: `This will permanently delete ${row.name}${row.employee_id ? ` (${row.employee_id})` : ''} from user management.`,
-            confirmText: 'Delete',
+    const removeAccount = (row) => {
+        setDeleteError('');
+        setDeletingId(row.id);
+        router.delete(`/admin/users/${row.id}`, {
+            preserveScroll: true,
+            onSuccess: () => setPendingDelete(null),
+            onError: (errors) => {
+                setDeleteError(errors?.user || errors?.message || 'The account could not be deleted. Please try again.');
+            },
+            onFinish: () => setDeletingId(null),
         });
-
-        if (!approved) return;
-
-        deleteForm.delete(`/admin/users/${row.id}`);
     };
 
     return (
@@ -127,6 +128,7 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                         Activation credentials will be sent through the configured mailer: <strong>{mailer}</strong>.
                     </div>
                     {success && <div style={{ marginBottom: '1rem', padding: '0.75rem 0.9rem', borderRadius: 12, background: 'rgba(16,185,129,0.14)', color: '#86efac', border: '1px solid rgba(16,185,129,0.25)', fontSize: '0.82rem' }}>{success}</div>}
+                    {deleteError && <div style={{ marginBottom: '1rem', padding: '0.75rem 0.9rem', borderRadius: 12, background: 'rgba(185,28,28,0.14)', color: '#fca5a5', border: '1px solid rgba(248,113,113,0.25)', fontSize: '0.82rem' }}>{deleteError}</div>}
                     <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)' }}>
                         Activate accounts for secretariat, HRDC, supervisor, and employee users, then manage their assigned roles from the same list.
                     </div>
@@ -188,7 +190,7 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                                                 {user.roles?.[0] !== 'system-admin' && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeAccount(user)}
+                                                        onClick={() => setPendingDelete(user)}
                                                         title="Delete"
                                                         aria-label={`Delete ${user.name}`}
                                                         style={{
@@ -271,6 +273,25 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {pendingDelete && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 16000, background: 'rgba(3,7,18,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div style={{ width: '100%', maxWidth: 430, background: 'var(--admin-card)', border: '1px solid var(--admin-border-strong)', borderRadius: 18, padding: '1.25rem', boxShadow: 'var(--admin-shadow)' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 750, color: 'var(--admin-text-primary)' }}>Delete user account?</div>
+                        <p style={{ margin: '0.65rem 0 0', color: 'var(--admin-text-muted)', fontSize: '0.86rem', lineHeight: 1.6 }}>
+                            This will permanently delete <strong style={{ color: 'var(--admin-text-primary)' }}>{pendingDelete.name}</strong>
+                            {pendingDelete.employee_id ? ` (${pendingDelete.employee_id})` : ''} from user management.
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.1rem' }}>
+                            <button type="button" onClick={() => setPendingDelete(null)} disabled={deletingId !== null} style={{ padding: '0.65rem 0.9rem', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'transparent', color: 'var(--admin-text-secondary)', cursor: deletingId !== null ? 'wait' : 'pointer' }}>
+                                Cancel
+                            </button>
+                            <button type="button" onClick={() => removeAccount(pendingDelete)} disabled={deletingId !== null} style={{ padding: '0.65rem 0.9rem', borderRadius: 10, border: 'none', background: '#b91c1c', color: '#fff', cursor: deletingId !== null ? 'wait' : 'pointer', fontWeight: 750 }}>
+                                {deletingId !== null ? 'Deleting...' : 'Delete User'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

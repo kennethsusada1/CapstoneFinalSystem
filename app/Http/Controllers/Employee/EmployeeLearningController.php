@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
+use App\Services\StaticLnaAnalyticsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,66 +20,7 @@ class EmployeeLearningController extends Controller
      */
     protected function recommendationProfile(LearningNeedsAnalysis $entry): array
     {
-        $context = strtolower(trim($entry->focus_area.' '.$entry->competency_gap.' '.$entry->proposed_intervention));
-
-        $profile = match (true) {
-            str_contains($context, 'lead') || str_contains($context, 'supervis') => [
-                'track' => 'Leadership and Supervision',
-                'skill_gap' => 'Leadership, coaching, and team supervision capability',
-                'training_title' => 'Supervisory Development Program',
-                'training_type' => 'In-house',
-                'provider' => 'HRDC Learning and Development Unit',
-            ],
-            str_contains($context, 'data') || str_contains($context, 'excel') || str_contains($context, 'digital') || str_contains($context, 'system') => [
-                'track' => 'Digital Productivity and Data Management',
-                'skill_gap' => 'Digital tools, records management, and data analysis capability',
-                'training_title' => 'Digital Productivity and Data Management Workshop',
-                'training_type' => 'Invitational',
-                'provider' => 'Civil Service Commission / External ICT Partner',
-            ],
-            str_contains($context, 'commun') || str_contains($context, 'writing') || str_contains($context, 'report') || str_contains($context, 'present') => [
-                'track' => 'Communication and Technical Writing',
-                'skill_gap' => 'Written communication, presentation, and report preparation capability',
-                'training_title' => 'Technical Writing and Presentation Skills Training',
-                'training_type' => 'In-house',
-                'provider' => 'Secretariat and HRDC',
-            ],
-            str_contains($context, 'customer') || str_contains($context, 'client') || str_contains($context, 'service') => [
-                'track' => 'Customer Service Excellence',
-                'skill_gap' => 'Client handling, service delivery, and stakeholder engagement capability',
-                'training_title' => 'Customer Service Excellence Program',
-                'training_type' => 'In-house',
-                'provider' => 'HRDC Service Quality Team',
-            ],
-            str_contains($context, 'plan') || str_contains($context, 'project') || str_contains($context, 'monitor') => [
-                'track' => 'Planning and Project Monitoring',
-                'skill_gap' => 'Planning, implementation monitoring, and target management capability',
-                'training_title' => 'Project Planning and Monitoring Workshop',
-                'training_type' => 'Invitational',
-                'provider' => 'DILG / Accredited Training Provider',
-            ],
-            default => [
-                'track' => 'Core Functional Capability',
-                'skill_gap' => 'Role-specific functional competency requiring further development',
-                'training_title' => 'Functional Competency Enhancement Training',
-                'training_type' => 'In-house',
-                'provider' => 'HRDC Learning and Development Unit',
-            ],
-        };
-
-        $priorityLabel = ucfirst((string) $entry->priority_level);
-
-        return [
-            'lna_id' => $entry->id,
-            'focus_area' => $entry->focus_area,
-            'priority_level' => $entry->priority_level,
-            'prescribed_skills_gap' => $profile['skill_gap'],
-            'predicted_training_recommendation' => $profile['training_title'],
-            'training_type' => $profile['training_type'],
-            'provider' => $profile['provider'],
-            'track' => $profile['track'],
-            'rationale' => "{$priorityLabel} priority development in {$entry->focus_area} indicates a need for {$profile['track']}.",
-        ];
+        return app(StaticLnaAnalyticsService::class)->recommendation($entry);
     }
 
     /**
@@ -88,9 +30,12 @@ class EmployeeLearningController extends Controller
     protected function recommendationsFor(Collection $entries): Collection
     {
         return $entries
-            ->where('status', 'reviewed')
+            ->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
+                && $entry->analytics_generated_at !== null
+                && $entry->predictive_skills_gap !== null
+                && $entry->prescriptive_training_recommendation !== null)
             ->map(fn (LearningNeedsAnalysis $entry) => $this->recommendationProfile($entry))
-            ->unique(fn (array $recommendation) => $recommendation['focus_area'].'|'.$recommendation['predicted_training_recommendation'])
+            ->unique(fn (array $recommendation) => $recommendation['focus_area'].'|'.$recommendation['prescriptive_training_recommendation'])
             ->values();
     }
 
@@ -105,12 +50,12 @@ class EmployeeLearningController extends Controller
         $notifications = collect();
 
         foreach ($recommendations as $recommendation) {
-            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['predicted_training_recommendation']);
+            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['prescriptive_training_recommendation']);
 
             if (! $matchedTraining) {
                 $notifications->push([
                     'title' => 'Training Recommendation Available',
-                    'message' => "You are advised to undergo {$recommendation['predicted_training_recommendation']} to address the prescribed skills gap in {$recommendation['focus_area']}.",
+                    'message' => "You are advised to undergo {$recommendation['prescriptive_training_recommendation']} to address the predictive skills gap in {$recommendation['focus_area']}.",
                     'type' => 'action',
                 ]);
 
@@ -168,7 +113,7 @@ class EmployeeLearningController extends Controller
 
         return Inertia::render('Employee/MyTrainings/Index', [
             'recommendations' => $recommendations->map(function (array $recommendation) use ($trainings) {
-                $applied = $trainings->contains(fn (TrainingApplication $training) => $training->training_title === $recommendation['predicted_training_recommendation']);
+                $applied = $trainings->contains(fn (TrainingApplication $training) => $training->training_title === $recommendation['prescriptive_training_recommendation']);
 
                 return [
                     ...$recommendation,
@@ -256,11 +201,14 @@ class EmployeeLearningController extends Controller
             ->whereKey($validated['lna_id'])
             ->where('user_id', $user->id)
             ->where('status', 'reviewed')
+            ->whereNotNull('analytics_generated_at')
+            ->whereNotNull('predictive_skills_gap')
+            ->whereNotNull('prescriptive_training_recommendation')
             ->first();
 
         if (! $lna) {
             return back()->withErrors([
-                'lna_id' => 'Select an LNA assessment that has been evaluated and endorsed by your supervisor.',
+                'lna_id' => 'Select an LNA assessment with supervisor-generated analytics.',
             ]);
         }
 
@@ -281,7 +229,7 @@ class EmployeeLearningController extends Controller
             'user_id' => $user->id,
             'learning_needs_analysis_id' => $lna->id,
             'employee_id' => $user->employee_id,
-            'training_title' => $recommendation['predicted_training_recommendation'],
+            'training_title' => $recommendation['prescriptive_training_recommendation'],
             'training_type' => $validated['training_type'],
             'provider' => $validated['provider'] ?? null,
             'office' => $validated['office'] ?? $user->office,
@@ -299,27 +247,33 @@ class EmployeeLearningController extends Controller
     public function learningNeedsAnalysis(Request $request): Response
     {
         $user = $request->user();
+        $user->loadMissing('employeeRecord');
         $entries = LearningNeedsAnalysis::query()
             ->where('user_id', $user->id)
             ->latest()
             ->get();
-        $recommendations = $this->recommendationsFor($entries);
 
         return Inertia::render('Employee/LearningNeedsAnalysis/Index', [
+            'employeeProfile' => [
+                'name' => $user->name,
+                'position' => $user->employeeRecord?->position,
+                'department' => $user->office ?: $user->employeeRecord?->office,
+                'employee_id' => $user->employee_id,
+            ],
             'lnaEntries' => $entries
                 ->map(fn (LearningNeedsAnalysis $item) => [
                     'id' => $item->id,
-                    'focus_area' => $item->focus_area,
-                    'competency_gap' => $item->competency_gap,
-                    'proposed_intervention' => $item->proposed_intervention,
-                    'priority_level' => $item->priority_level,
+                    'ipcr_rating' => $item->ipcr_rating,
+                    'core_functions' => $item->core_functions,
+                    'support_functions' => $item->support_functions,
+                    'skill_assessments' => $item->skill_assessments,
+                    'preferred_learning_methods' => $item->preferred_learning_methods,
+                    'preferred_learning_methods_other' => $item->preferred_learning_methods_other,
+                    'assessment_methods' => $item->assessment_methods,
+                    'employee_signature' => $item->employee_signature,
                     'status' => $item->status,
                     'submitted_on' => $item->submitted_on?->toDateString(),
-                    'review_remarks' => $item->review_remarks,
-                    'reviewed_at' => $item->reviewed_at?->toDateTimeString(),
-                    ...$this->recommendationProfile($item),
                 ]),
-            'recommendations' => $recommendations,
         ]);
     }
 
@@ -342,6 +296,7 @@ class EmployeeLearningController extends Controller
                 ->get()
                 ->map(fn (LearningActionPlan $item) => [
                     'id' => $item->id,
+                    'training_application_id' => $item->training_application_id,
                     'training_title' => $item->training_title,
                     'implementation_summary' => $item->implementation_summary,
                     'learning_outcomes' => $item->learning_outcomes,
@@ -359,6 +314,66 @@ class EmployeeLearningController extends Controller
 
     public function storeLna(Request $request): RedirectResponse
     {
+        if ($request->boolean('workbook_form')) {
+            $validated = $request->validate([
+                'workbook_form' => ['required', 'boolean'],
+                'ipcr_rating' => ['nullable', 'string', 'max:50'],
+                'core_functions' => ['required', 'array', 'size:6'],
+                'core_functions.*' => ['nullable', 'string', 'max:1000'],
+                'support_functions' => ['required', 'array', 'size:4'],
+                'support_functions.*' => ['nullable', 'string', 'max:1000'],
+                'skill_assessments' => ['required', 'array', 'min:1'],
+                'skill_assessments.*' => ['required', 'string', 'in:N/A,1,2,3,4'],
+                'preferred_learning_methods' => ['required', 'array', 'min:1'],
+                'preferred_learning_methods.*' => ['string', 'in:Mentorship/Coaching,Self-paced Learning,Workshops/Seminars/Trainings,Others'],
+                'preferred_learning_methods_other' => ['nullable', 'string', 'max:255'],
+                'assessment_methods' => ['required', 'array', 'min:1'],
+                'assessment_methods.*' => ['string', 'in:Employee Self-Assessment,Questionnaire,Feedback,Observation,Reflection,Customer Feedback,Performance Review,Performance Evaluation (MPOR)'],
+                'employee_signature' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $skills = collect($validated['skill_assessments']);
+            $gapSkills = $skills
+                ->filter(fn (string $rating): bool => in_array($rating, ['N/A', '3', '4'], true) === false);
+            $gaps = $gapSkills
+                ->map(fn (string $rating, string $skill): string => "{$skill} (self-rating: {$rating})")
+                ->values();
+            $focusArea = $gapSkills->keys()->first() ?? 'Employee self-assessment';
+            $competencyGap = $gaps->isEmpty()
+                ? 'No immediate competency gap identified in the selected skills.'
+                : 'Employee-identified development needs: '.$gaps->implode(', ').'.';
+            $learningMethods = collect($validated['preferred_learning_methods'])
+                ->map(fn (string $method): string => $method === 'Others'
+                    ? ($validated['preferred_learning_methods_other'] ?? 'Other learning method')
+                    : $method);
+            $priority = $skills->contains(fn (string $rating): bool => $rating === '1')
+                ? 'high'
+                : ($skills->contains(fn (string $rating): bool => $rating === '2') ? 'medium' : 'low');
+
+            $user = $request->user();
+
+            LearningNeedsAnalysis::query()->create([
+                'user_id' => $user->id,
+                'employee_id' => $user->employee_id,
+                'ipcr_rating' => $validated['ipcr_rating'] ?? null,
+                'core_functions' => $validated['core_functions'],
+                'support_functions' => $validated['support_functions'],
+                'skill_assessments' => $validated['skill_assessments'],
+                'preferred_learning_methods' => $validated['preferred_learning_methods'],
+                'preferred_learning_methods_other' => $validated['preferred_learning_methods_other'] ?? null,
+                'assessment_methods' => $validated['assessment_methods'],
+                'employee_signature' => $validated['employee_signature'] ?? null,
+                'focus_area' => $focusArea,
+                'competency_gap' => $competencyGap,
+                'proposed_intervention' => $learningMethods->implode(', '),
+                'priority_level' => $priority,
+                'status' => 'submitted',
+                'submitted_on' => now()->toDateString(),
+            ]);
+
+            return back()->with('success', 'LNA form submitted successfully. Your employee responses are now waiting for supervisor review.');
+        }
+
         $validated = $request->validate([
             'focus_area' => ['required', 'string', 'max:255'],
             'competency_gap' => ['required', 'string'],
@@ -385,6 +400,7 @@ class EmployeeLearningController extends Controller
     public function storeLap(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'training_application_id' => ['required', 'integer'],
             'training_title' => ['required', 'string', 'max:255'],
             'implementation_summary' => ['required', 'string'],
             'learning_outcomes' => ['nullable', 'string'],
@@ -392,9 +408,37 @@ class EmployeeLearningController extends Controller
         ]);
 
         $user = $request->user();
+        $eligibleTraining = TrainingApplication::query()
+            ->whereKey($validated['training_application_id'])
+            ->where('user_id', $user->id)
+            ->where('training_title', $validated['training_title'])
+            ->where(function ($query) {
+                $query->where('status', 'completed')
+                    ->orWhere('is_attended', true);
+            })
+            ->first();
+
+        if (! $eligibleTraining) {
+            return back()->withErrors([
+                'training_title' => 'A LAP can only be submitted after the approved training has been attended or completed.',
+            ]);
+        }
+
+        $hasExistingLap = LearningActionPlan::query()
+            ->where('user_id', $user->id)
+            ->where('training_application_id', $eligibleTraining->id)
+            ->whereIn('status', ['submitted', 'completed'])
+            ->exists();
+
+        if ($hasExistingLap && in_array($validated['status'], ['submitted', 'completed'], true)) {
+            return back()->withErrors([
+                'training_title' => 'A submitted LAP already exists for this training activity.',
+            ]);
+        }
 
         LearningActionPlan::query()->create([
             'user_id' => $user->id,
+            'training_application_id' => $eligibleTraining->id,
             'employee_id' => $user->employee_id,
             'training_title' => $validated['training_title'],
             'implementation_summary' => $validated['implementation_summary'],

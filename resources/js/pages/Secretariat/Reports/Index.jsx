@@ -15,7 +15,7 @@ export default function Index({ summary, activities, offices }) {
                 />
 
                 <section className="sec-stats">
-                    <StatCard label="Applications" value={summary?.total_applications ?? 0} icon="bi-files" />
+                    <StatCard label="Report Ready" value={summary?.total_applications ?? 0} icon="bi-files" />
                     <StatCard label="Approved Activities" value={summary?.approved_activities ?? 0} icon="bi-calendar2-check" color="#38bdf8" />
                     <StatCard label="Completed" value={summary?.completed_activities ?? 0} icon="bi-patch-check" color="#34d399" />
                     <StatCard label="Completion Rate" value={`${summary?.completion_rate ?? 0}%`} icon="bi-graph-up-arrow" color="#facc15" />
@@ -24,7 +24,7 @@ export default function Index({ summary, activities, offices }) {
                 <section className="sec-grid-2">
                     <Panel title="Terminal Activity Summary" subtitle="Consolidated training outcomes by activity">
                         {(activities ?? []).length === 0 ? (
-                            <EmptyState icon="bi-bar-chart" title="No reportable activities" text="Training applications will populate this report." />
+                            <EmptyState icon="bi-bar-chart" title="No reportable activities" text="A completed training becomes reportable after the Secretariat receives its submitted LAP." />
                         ) : (
                             <div className="sec-list">
                                 {(activities ?? []).map((item) => (

@@ -46,6 +46,9 @@ class SupervisorPortalController extends Controller
                 'href' => '/supervisor/idp',
                 'priority' => 'medium',
             ]);
+        $attentionItems = collect($lnaAttention->all())
+            ->merge($lapAttention->all())
+            ->values();
 
         return Inertia::render('Supervisor/Dashboard', [
             'supervisor' => $this->profileData($supervisor),
@@ -69,7 +72,7 @@ class SupervisorPortalController extends Controller
                     'lap_count' => $lapEntries->where('user_id', $employee->id)->count(),
                 ];
             })->values(),
-            'attentionItems' => $lnaAttention->merge($lapAttention)->values(),
+            'attentionItems' => $attentionItems,
             'trainingMix' => [
                 ['label' => 'Applied', 'value' => $trainings->where('status', 'applied')->count(), 'color' => '#38bdf8'],
                 ['label' => 'Ongoing', 'value' => $activeTrainings->count(), 'color' => '#f59e0b'],
@@ -254,16 +257,9 @@ class SupervisorPortalController extends Controller
      */
     private function team(User $supervisor): EloquentCollection
     {
-        $office = $this->office($supervisor);
-
-        if (! $office) {
-            return new EloquentCollection;
-        }
-
         return User::role('employee')
             ->with('employeeRecord')
             ->get()
-            ->filter(fn (User $employee) => strcasecmp((string) $this->office($employee), $office) === 0)
             ->values();
     }
 
