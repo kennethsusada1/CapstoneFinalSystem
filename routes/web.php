@@ -164,7 +164,7 @@ Route::middleware(['auth', 'role:supervisor'])->prefix('supervisor')->group(func
     Route::patch('/profile', [SupervisorPortalController::class, 'updateProfile']);
 });
 
-Route::middleware(['auth', 'employee.access'])->prefix('employee')->group(function () {
+Route::middleware(['auth', 'employee.access', 'trainee.only'])->prefix('employee')->group(function () {
     Route::get('/', EmployeeDashboardController::class);
     Route::get('/recommendations', [EmployeeLearningController::class, 'trainings']);
     Route::get('/training-applications', [EmployeeLearningController::class, 'applications']);
