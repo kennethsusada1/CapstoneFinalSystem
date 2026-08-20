@@ -163,7 +163,7 @@ export default function Login({ canResetPassword = true, status, mode: initialMo
                     <i className={`bi ${darkMode ? 'bi-sun' : 'bi-moon-stars'}`} />
                 </button>
             </div>
-            <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)' }}>
+            <div className="auth-page-shell" style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)' }}>
                 <div className="auth-hero" style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
                     {slides.map((slide, index) => (
                         <div key={slide} className={`auth-split-slide${activeSlide === index ? ' is-active' : ''}`}>
@@ -201,8 +201,8 @@ export default function Login({ canResetPassword = true, status, mode: initialMo
                         <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)' }}>Ã‚Â© 2026 Smart L&amp;D. All rights reserved.</div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.25rem' }}>
-                    <div style={{ width: '100%', maxWidth: 420, background: 'var(--admin-card)', border: '1px solid var(--admin-border-strong)', borderRadius: 'var(--admin-radius)', boxShadow: 'var(--admin-shadow)', padding: '2.5rem 2rem' }}>
+                <div className="auth-form-column" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.25rem' }}>
+                    <div className="auth-form-card" style={{ width: '100%', maxWidth: 420, background: 'var(--admin-card)', border: '1px solid var(--admin-border-strong)', borderRadius: 'var(--admin-radius)', boxShadow: 'var(--admin-shadow)', padding: '2.5rem 2rem' }}>
                         <div style={{ marginBottom: '2rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--admin-border)' }}>
                             <h4 style={{ fontWeight: 700, fontSize: '1.5rem', color: 'var(--admin-text-primary)', letterSpacing: '-0.02em', margin: 0 }}>{meta.title}</h4>
                             <p style={{ fontSize: '0.875rem', color: 'var(--admin-text-muted)', marginTop: '0.5rem' }}>{meta.subtitle}</p>
@@ -330,8 +330,23 @@ export default function Login({ canResetPassword = true, status, mode: initialMo
                     position: absolute; inset: 0; z-index: 1;
                     background: linear-gradient(180deg, rgba(4,10,24,0.54) 0%, rgba(7,14,30,0.68) 100%);
                 }
-                @media (max-width: 767px) {
+                .auth-form-column { min-width: 0; }
+                .auth-form-card { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+                @media (max-width: 1023px) {
+                    .auth-page-shell { grid-template-columns: minmax(0, 1fr) !important; }
                     .auth-hero { display: none; }
+                }
+                @media (max-width: 767px) {
+                    .auth-form-column { align-items: flex-start !important; padding: 4.5rem .75rem 1rem !important; }
+                    .auth-form-card { max-width: 520px; padding: 1.5rem 1rem !important; border-radius: 16px !important; }
+                    .auth-form-card > div:first-child { margin-bottom: 1.35rem !important; padding-bottom: 1rem !important; }
+                    .auth-form-card h4 { font-size: 1.3rem !important; }
+                    .auth-form-card input { min-height: 44px; }
+                    .auth-form-card button { min-height: 44px; }
+                }
+                @media (max-width: 380px) {
+                    .auth-form-column { padding-inline: .5rem !important; }
+                    .auth-form-card { padding-inline: .85rem !important; }
                 }
             `}</style>
         </GuestLayout>

@@ -61,7 +61,7 @@ export default function AppLayout({ children, title, description }) {
                     {mobileOpen && <div onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }} />}
 
                     {showLoader && (
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'rgba(10,15,26,0.94)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 13000, background: 'color-mix(in srgb, var(--admin-bg-primary) 94%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
                             <img src="/images/ld-logo.png" alt="Smart L&D" style={{ width: 64, height: 64, borderRadius: 20 }} />
                             <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>Loading Smart L&amp;D</div>
                             <div style={{ width: 220, height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
@@ -90,7 +90,7 @@ export default function AppLayout({ children, title, description }) {
                 </div>
 
                 <style>{`
-                    .admin-content { flex: 1; padding: 1rem 1.5rem; overflow: auto; }
+                    .admin-content { flex: 1; min-width: 0; padding: 1rem 1.5rem; overflow: auto; }
                     @keyframes ld-progress {
                         from { transform: translateX(-18%); }
                         to { transform: translateX(38%); }
@@ -98,6 +98,9 @@ export default function AppLayout({ children, title, description }) {
                     @media (max-width: 767px) {
                         .app-main { margin-left: 0 !important; }
                         .admin-content { padding: 0.75rem 1rem; }
+                    }
+                    @media (max-width: 480px) {
+                        .admin-content { padding: 0.65rem 0.75rem; }
                     }
                 `}</style>
             </ConfirmProvider>

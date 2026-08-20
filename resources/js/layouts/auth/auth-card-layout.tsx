@@ -33,11 +33,11 @@ export default function AuthCardLayout({
 
                 <div className="flex flex-col gap-6">
                     <Card className="rounded-xl">
-                        <CardHeader className="px-10 pt-8 pb-0 text-center">
+                        <CardHeader className="px-5 pt-7 pb-0 text-center sm:px-10 sm:pt-8">
                             <CardTitle className="text-xl">{title}</CardTitle>
                             <CardDescription>{description}</CardDescription>
                         </CardHeader>
-                        <CardContent className="px-10 py-8">
+                        <CardContent className="px-5 py-7 sm:px-10 sm:py-8">
                             {children}
                         </CardContent>
                     </Card>

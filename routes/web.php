@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
-Route::redirect('/', '/login');
+Route::redirect('/', '/login')->name('home');
 
 // Public intake landing page — employees redirected here from smart-pms when training-locked.
 // No auth middleware: employee may not have an L&D account yet.
@@ -87,6 +87,20 @@ Route::get('/logout', function (Request $request) {
 
     return redirect($target);
 });
+
+Route::middleware('auth')->get('/dashboard', function (Request $request) {
+    $role = $request->user()->getRoleNames()->first();
+
+    $target = match ($role) {
+        'system-admin' => '/admin',
+        'secretariat' => '/secretariat',
+        'hrdc' => '/hrdc',
+        'supervisor' => '/supervisor',
+        default => '/employee',
+    };
+
+    return redirect($target);
+})->name('dashboard');
 
 Route::post('/send/id', [ActivationController::class, 'sendId'])->name('activation.send');
 Route::post('/activate/complete', [ActivationController::class, 'complete'])->name('activation.complete');

@@ -117,7 +117,7 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
             <div className="sys-page">
                 <PageHero kicker="ACCESS AND ACTIVATION" title="Put the right people in the right portal." description="Create employee records, send activation credentials, assign access roles, and monitor account readiness from one secure workspace." href="/admin/employees" action="Open employee registry" icon="bi-person-vcard-fill" />
                 <div style={cardStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
+                    <div className="admin-users-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--admin-text-primary)' }}>User Accounts</div>
                         <button type="button" onClick={() => setShowModal(true)} style={{ ...buttonStyle, padding: '0.6rem 0.9rem', fontSize: '0.82rem' }}>
                             <i className="bi bi-plus-lg" style={{ marginRight: 6 }} />
@@ -137,7 +137,7 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                 <div style={cardStyle}>
                     <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--admin-text-primary)', marginBottom: '1rem' }}>Managed User Accounts</div>
                     <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table className="admin-users-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ textAlign: 'left', color: 'var(--admin-text-muted)', fontSize: '0.76rem' }}>
                                     <th style={{ paddingBottom: '0.65rem' }}>Name</th>
@@ -220,8 +220,8 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
             </div>
 
             {showModal && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 1400, background: 'rgba(4,10,24,0.64)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                    <div style={{ width: '100%', maxWidth: 520, background: 'var(--admin-card)', border: '1px solid var(--admin-border-strong)', borderRadius: 20, boxShadow: 'var(--admin-shadow)', padding: '1.25rem' }}>
+                <div className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1400, background: 'rgba(4,10,24,0.64)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="admin-modal-card" style={{ width: '100%', maxWidth: 520, background: 'var(--admin-card)', border: '1px solid var(--admin-border-strong)', borderRadius: 20, boxShadow: 'var(--admin-shadow)', padding: '1.25rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
                             <div>
                                 <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--admin-text-primary)' }}>Add Employee</div>
@@ -239,7 +239,7 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                                 {manualForm.errors.name && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{manualForm.errors.name}</div>}
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Role</div>
                                     <select value={manualForm.data.role} onChange={(e) => manualForm.setData('role', e.target.value)} style={inputStyle}>
@@ -264,7 +264,7 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                                 {manualForm.errors.email && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{manualForm.errors.email}</div>}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.35rem' }}>
+                            <div className="admin-modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.35rem' }}>
                                 <button type="button" onClick={() => setShowModal(false)} style={{ border: '1px solid var(--admin-border-strong)', background: 'transparent', color: 'var(--admin-text-secondary)', borderRadius: 12, padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: 700 }}>
                                     Cancel
                                 </button>
@@ -284,7 +284,7 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                             This will permanently delete <strong style={{ color: 'var(--admin-text-primary)' }}>{pendingDelete.name}</strong>
                             {pendingDelete.employee_id ? ` (${pendingDelete.employee_id})` : ''} from user management.
                         </p>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.1rem' }}>
+                        <div className="admin-modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.1rem' }}>
                             <button type="button" onClick={() => setPendingDelete(null)} disabled={deletingId !== null} style={{ padding: '0.65rem 0.9rem', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'transparent', color: 'var(--admin-text-secondary)', cursor: deletingId !== null ? 'wait' : 'pointer' }}>
                                 Cancel
                             </button>
@@ -295,6 +295,21 @@ export default function Index({ users, employees, mailer, assignableRoles }) {
                     </div>
                 </div>
             )}
+            <style>{`
+                .admin-users-table { min-width: 880px; }
+                .admin-modal-card { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+                @media (max-width: 700px) {
+                    .admin-users-heading { align-items: stretch !important; flex-direction: column; }
+                    .admin-users-heading button { width: 100%; }
+                    .admin-form-grid { grid-template-columns: 1fr !important; }
+                    .admin-modal-actions { align-items: stretch; flex-direction: column-reverse; }
+                    .admin-modal-actions button { width: 100%; min-height: 44px; }
+                }
+                @media (max-width: 480px) {
+                    .admin-modal-backdrop { align-items: flex-start !important; padding: .65rem !important; }
+                    .admin-modal-card { padding: 1rem !important; border-radius: 16px !important; }
+                }
+            `}</style>
             <AdminStyles />
         </AppLayout>
     );

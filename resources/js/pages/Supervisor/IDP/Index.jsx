@@ -28,7 +28,7 @@ export default function Index({ plans }) {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem', minWidth: 0 }}><Initials name={plan.employee_name} /><div style={{ minWidth: 0 }}><div className="sup-title">{plan.employee_name}</div><div className="sup-muted">{plan.position || 'Employee'} · {plan.employee_id}</div></div></div>
                                         <StatusPill tone={toneFor(plan.status)}>{plan.status}</StatusPill>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, .8fr) minmax(240px, 1.2fr) auto', gap: '.8rem', marginTop: '.7rem', paddingTop: '.65rem', borderTop: '1px solid var(--admin-border)' }}>
+                                    <div className="sup-idp-summary" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, .8fr) minmax(240px, 1.2fr) auto', gap: '.8rem', marginTop: '.7rem', paddingTop: '.65rem', borderTop: '1px solid var(--admin-border)' }}>
                                         <div><div className="sup-muted">TRAINING</div><div className="sup-title" style={{ marginTop: '.25rem' }}>{plan.training_title}</div></div>
                                         <div><div className="sup-muted">IMPLEMENTATION</div><div className="sup-copy" style={{ marginTop: '.2rem' }}>{plan.implementation_summary}</div></div>
                                         <div className="sup-muted">{plan.submitted_on || 'Draft'}</div>
@@ -39,6 +39,11 @@ export default function Index({ plans }) {
                     )}
                 </Panel>
             </div>
+            <style>{`
+                @media (max-width: 700px) {
+                    .sup-idp-summary { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
             <SupervisorStyles />
         </AppLayout>
     );

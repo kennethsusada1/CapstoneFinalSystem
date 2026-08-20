@@ -22,13 +22,13 @@ export default function Intake({
         <>
             <Head title="L&D Training Enrollment" />
 
-            <div style={styles.page}>
-                <div style={styles.card}>
+            <div className="intake-page" style={styles.page}>
+                <div className="intake-card" style={styles.card}>
 
                     {/* Top accent bar */}
                     <div style={styles.accentBar} />
 
-                    <div style={styles.body}>
+                    <div className="intake-body" style={styles.body}>
 
                         {/* Logo */}
                         <div style={styles.logoWrap}>
@@ -109,7 +109,7 @@ export default function Intake({
                     </div>
 
                     {/* Footer */}
-                    <div style={styles.footer}>
+                    <div className="intake-footer" style={styles.footer}>
                         For assistance, contact your HR / Secretariat office.
                     </div>
                 </div>
@@ -120,6 +120,15 @@ export default function Intake({
                     system. If you believe you received this in error, please contact your supervisor.
                 </p>
             </div>
+            <style>{`
+                @media (max-width: 520px) {
+                    .intake-page { justify-content: flex-start !important; padding: 12px 8px !important; }
+                    .intake-card { border-radius: 14px !important; }
+                    .intake-body { gap: 18px !important; padding: 28px 18px 24px !important; }
+                    .intake-body h1 { font-size: 22px !important; }
+                    .intake-footer { padding: 14px 18px !important; }
+                }
+            `}</style>
         </>
     );
 }

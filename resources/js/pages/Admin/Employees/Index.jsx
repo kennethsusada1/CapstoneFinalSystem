@@ -130,7 +130,7 @@ export default function Index({ employees, filters }) {
                                 Review imported HRMS records and keep employee details up to date.
                             </div>
                         </div>
-                        <form onSubmit={submitSearch} style={{ display: 'flex', gap: '0.6rem', minWidth: 280 }}>
+                        <form className="admin-employee-search" onSubmit={submitSearch} style={{ display: 'flex', gap: '0.6rem', minWidth: 280 }}>
                             <input value={search} onChange={(e) => setSearch(e.target.value)} style={inputStyle} type="text" placeholder="Search employee, office, position..." />
                             <button type="submit" style={{ ...buttonStyle, paddingInline: '0.9rem' }}>
                                 Search
@@ -138,7 +138,7 @@ export default function Index({ employees, filters }) {
                         </form>
                     </div>
                     <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <table className="admin-employees-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ textAlign: 'left', color: 'var(--admin-text-muted)', fontSize: '0.76rem' }}>
                                     <th style={{ paddingBottom: '0.65rem' }}>Employee ID</th>
@@ -178,8 +178,8 @@ export default function Index({ employees, filters }) {
             </div>
 
             {editingEmployee && (
-                <div style={{ position: 'fixed', inset: 0, zIndex: 1400, background: 'rgba(4,10,24,0.64)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                    <div style={{ width: '100%', maxWidth: 620, background: 'var(--admin-card)', border: '1px solid var(--admin-border-strong)', borderRadius: 20, boxShadow: 'var(--admin-shadow)', padding: '1.25rem' }}>
+                <div className="admin-modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1400, background: 'rgba(4,10,24,0.64)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="admin-modal-card" style={{ width: '100%', maxWidth: 620, background: 'var(--admin-card)', border: '1px solid var(--admin-border-strong)', borderRadius: 20, boxShadow: 'var(--admin-shadow)', padding: '1.25rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
                             <div>
                                 <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--admin-text-primary)' }}>Edit Employee Record</div>
@@ -191,7 +191,7 @@ export default function Index({ employees, filters }) {
                         </div>
 
                         <form onSubmit={submitEdit} style={{ display: 'grid', gap: '0.85rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>First name</div>
                                     <input value={editForm.data.first_name} onChange={(e) => editForm.setData('first_name', e.target.value)} style={inputStyle} type="text" />
@@ -204,7 +204,7 @@ export default function Index({ employees, filters }) {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Middle name</div>
                                     <input value={editForm.data.middle_name} onChange={(e) => editForm.setData('middle_name', e.target.value)} style={inputStyle} type="text" />
@@ -217,7 +217,7 @@ export default function Index({ employees, filters }) {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                 <div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Office</div>
                                     <input value={editForm.data.office} onChange={(e) => editForm.setData('office', e.target.value)} style={inputStyle} type="text" />
@@ -240,7 +240,7 @@ export default function Index({ employees, filters }) {
                                 {editForm.errors.employment_status && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{editForm.errors.employment_status}</div>}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.35rem' }}>
+                            <div className="admin-modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.35rem' }}>
                                 <button type="button" onClick={() => setEditingEmployee(null)} style={{ border: '1px solid var(--admin-border-strong)', background: 'transparent', color: 'var(--admin-text-secondary)', borderRadius: 12, padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: 700 }}>
                                     Cancel
                                 </button>
@@ -252,6 +252,22 @@ export default function Index({ employees, filters }) {
                     </div>
                 </div>
             )}
+            <style>{`
+                .admin-employees-table { min-width: 820px; }
+                .admin-modal-card { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+                @media (max-width: 700px) {
+                    .admin-employee-search { width: 100%; min-width: 0 !important; }
+                    .admin-form-grid { grid-template-columns: 1fr !important; }
+                    .admin-modal-actions { align-items: stretch; flex-direction: column-reverse; }
+                    .admin-modal-actions button { width: 100%; min-height: 44px; }
+                }
+                @media (max-width: 480px) {
+                    .admin-employee-search { flex-direction: column; }
+                    .admin-employee-search button { width: 100%; }
+                    .admin-modal-backdrop { align-items: flex-start !important; padding: .65rem !important; }
+                    .admin-modal-card { padding: 1rem !important; border-radius: 16px !important; }
+                }
+            `}</style>
             <AdminStyles />
         </AppLayout>
     );
