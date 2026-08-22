@@ -1,16 +1,59 @@
-# PMS → L&D Integration Contract
+# PMS → L&D Integration Contract (L&D System View)
 
-> **Last updated:** July 18, 2026
-> **Status:** Ready for implementation on both sides
+> **Last updated:** August 22, 2026
+> **Status:** Integration documented — see Known Issues section for code fixes needed
 > **Prepared by:** smart-pms coding agent
 
 ---
 
 ## Overview
 
-The **smart-pms** system identifies low-performing employees from released IPCR results. After their Individual Development Plan (IDP) is approved and reviewed by PMT, PMT submits the employee to the L&D system for training.
+The **CapstoneFinalSystem** (L&D) is one pillar of the HRIS. It receives low-performing employees from **smart-pms** via API, manages their training workflow, and notifies PMS when training is complete so PMS can unlock the employee's account.
 
-This document is the **complete API contract** between the two systems. The L&D developer should implement based on this document.
+This document covers:
+- What L&D receives from PMS (intake)
+- What L&D must send back to PMS (callback)
+- L&D-side database schema
+- Known code issues that need fixing
+
+For the PMS-side perspective and PMS database schema, see `L&D.md` in the smart-pms project.
+
+---
+
+## PMS Database Structure (Context for L&D Agents)
+
+> This section explains why `pms_user_id` in the payload maps to `users.id` in PMS,
+> and why you should never expect PMS to send a separate `employee_record_id`.
+> Column lists verified against PMS live database on August 22, 2026.
+
+PMS uses a two-table structure:
+
+```
+users     — auth only
+  id, name, role, email, password, two_factor_*, remember_token,
+  office_id (redundant copy), position (redundant copy),
+  created_at, updated_at
+
+employees — employee profile (authoritative for all profile data)
+  id, user_id (FK→users, unique),
+  first_name, middle_name, last_name,
+  employee_id, hms_employee_id,
+  office_id, position,       ← authoritative copies
+  is_active, is_disabled, activated_at, profile_photo_path,
+  training_locked,           ← ★ L&D lock flag
+  lnd_reference_id,          ← ★ L&D reference ID
+  created_at, updated_at
+```
+
+**Note:** `office_id` and `position` exist on BOTH tables due to a re-add migration (`2026_07_28`),
+but `employees` is authoritative. `training_locked` and `lnd_reference_id` exist ONLY on `employees`.
+
+The `employee.id` in the PMS payload = `users.id` in PMS = the cross-system identity key.
+Store this as `pms_user_id` in `training_referrals` and `lnd_trainees`.
+
+When PMS locks an employee for training, it must write `training_locked = true` to `employees`
+(not `users` — `users` has no such column). When L&D fires the callback, PMS uses `pms_user_id`
+to look up the `User`, then does `$user->employee->update(['training_locked' => false])`.
 
 ---
 
@@ -20,46 +63,90 @@ This document is the **complete API contract** between the two systems. The L&D 
 PMT clicks "Submit to L&D" in smart-pms
         │
         ▼
-smart-pms POSTs full employee payload → L&D API
+PMS POSTs full employee IDP payload → POST /api/lnd/development-plans
         │
         ▼
-L&D stores the record, returns lnd_reference_id
+L&D (PmsIntakeController::store()):
+  - Creates training_referral record
+  - Upserts lnd_trainee cross-system identity map
+  - Provisions or finds L&D user account for the employee
+  - Creates TrainingApplication(s) per IDP row
+  - Returns { status: "acknowledged", lnd_reference_id: "LND-REF-2026-XXXXX" }
         │
         ▼
-smart-pms locks employee PMS account
-Employee is redirected to L&D website when they try to log in
+PMS receives response:
+  - Stores lnd_reference_id on development_plans
+  - Writes training_locked = true to employees table
+  - Writes lnd_reference_id to employees table
+  - Employee is redirected to L&D website on next PMS login
         │
         ▼
-Employee completes training in L&D system
+Employee logs into L&D, completes training workflow
         │
         ▼
-L&D POSTs callback → smart-pms
+L&D Secretariat marks training as completed
+PmsCallbackService::notifyComplete() fires:
+  POST {PMS_BASE_URL}/api/lnd-callback/complete-training
         │
         ▼
-smart-pms unlocks employee account
-Employee can log into PMS again
+PMS receives callback:
+  - Marks development_plan status = 'completed'
+  - Writes training_locked = false to employees table
+  - Clears lnd_reference_id on employees table
+  - Employee can log into PMS again
 ```
 
 ---
 
-## Part 1: smart-pms → L&D (Intake Endpoint)
+## Part 1: Inbound from PMS — Intake Endpoint
 
-### Endpoint L&D must build
+### Route (already built)
 
 ```
 POST /api/lnd/development-plans
 Authorization: Bearer {LND_API_TOKEN}
 Content-Type: application/json
-Accept: application/json
 ```
 
-- `LND_API_TOKEN` — a static Bearer token that L&D defines and shares with the PMS team
-- PMS stores this token in its `.env` as `LND_API_TOKEN`
-- PMS stores the L&D base URL in its `.env` as `LND_BASE_URL`
+Middleware: `VerifyLndApiToken` — validates the Bearer token against `config('services.lnd.api_token')` / `LND_API_TOKEN` in `.env`.
+
+### Controller
+
+`App\Http\Controllers\Api\PmsIntakeController::store()`
+
+### What the controller does (current implementation)
+
+1. Validates the payload
+2. Guards against duplicate `external_plan_id` (idempotent — returns existing reference if already processed)
+3. Generates `lnd_reference_id` in format `LND-REF-{year}-{5-digit-seq}`
+4. Inside a DB transaction:
+   - Calls `provisionUser()` — finds or creates L&D user account by email, sends activation email if new
+   - Upserts `lnd_trainees` with `pms_user_id` → `lnd_user_id` mapping
+   - Creates `training_referrals` record with full JSON snapshots
+   - Creates `TrainingApplication` record(s) per IDP row
+5. Returns HTTP 201 `{ "status": "acknowledged", "lnd_reference_id": "..." }`
+
+### Known Issue in PmsIntakeController
+
+**File:** `app/Http/Controllers/Api/PmsIntakeController.php`
+
+The `provisionUser()` method tries to set `'office' => $emp['office_name']` when creating a new `User`:
+
+```php
+User::query()->create([
+    ...
+    'office' => $emp['office_name'] ?? null,   // ← 'office' is not a column on L&D's users table
+    ...
+]);
+```
+
+The L&D `users` table does not have an `office` column. This silently drops the value.
+
+**Fix:** Remove `'office' => ...` from the create call, or store the office name in the `lnd_trainees` table (which already has `office_name`). The `lnd_trainees` upsert immediately after already stores the office name correctly.
 
 ---
 
-### Full Request Payload
+### Full Request Payload Reference
 
 ```json
 {
@@ -114,33 +201,13 @@ Accept: application/json
                   "actual_quantity": 1
                 },
                 "standards": [
-                  { "dimension": "quality",     "rating": 5, "standard_text": "100% accurate, zero errors" },
-                  { "dimension": "quality",     "rating": 4, "standard_text": "Accurate with 1-2 minor errors" },
-                  { "dimension": "quality",     "rating": 3, "standard_text": "Accurate with 3-4 minor errors" },
-                  { "dimension": "quality",     "rating": 2, "standard_text": "With major errors" },
-                  { "dimension": "quality",     "rating": 1, "standard_text": "Inaccurate, requires full revision" },
-                  { "dimension": "timeliness",  "rating": 5, "standard_text": "Submitted 2+ days before deadline" },
-                  { "dimension": "timeliness",  "rating": 3, "standard_text": "Submitted on deadline" },
-                  { "dimension": "timeliness",  "rating": 1, "standard_text": "Submitted 2+ days after deadline" }
+                  { "dimension": "quality",    "rating": 5, "standard_text": "100% accurate, zero errors" },
+                  { "dimension": "timeliness", "rating": 5, "standard_text": "Submitted 2+ days before deadline" }
                 ]
               }
             ]
           }
         ]
-      },
-      {
-        "id": 2,
-        "name": "Support Functions",
-        "function_type": "support",
-        "weight_percent": 20,
-        "mfos": []
-      },
-      {
-        "id": 3,
-        "name": "Strategic Functions",
-        "function_type": "strategic",
-        "weight_percent": 10,
-        "mfos": []
       }
     ],
     "weighted_summary": [
@@ -171,88 +238,29 @@ Accept: application/json
 }
 ```
 
----
-
 ### Field Reference
 
-#### Top level
+#### `employee` block
 
-| Field | Type | Description |
+| Field | Type | Meaning in PMS |
 |---|---|---|
-| `external_plan_id` | string | PMS stable identifier. Format: `PMS-DP-{id}`. Store this and echo it back in the callback. |
-| `source_system` | string | Always `"PMS"` |
-
-#### `period`
-
-| Field | Type | Description |
-|---|---|---|
-| `id` | integer | PMS performance period ID |
-| `name` | string | Human-readable label e.g. `"Jan-Jun 2026"` |
-
-#### `employee`
-
-| Field | Type | Description |
-|---|---|---|
-| `id` | integer | PMS `users.id` — use this as `pms_user_id` in L&D. This is the cross-system link key. |
-| `name` | string | Full name |
-| `email` | string | Work email — use for account provisioning |
-| `position` | string | Job position title |
-| `office_id` | integer | PMS office ID |
-| `office_name` | string | Office name |
-
-#### `performance`
-
-| Field | Type | Description |
-|---|---|---|
-| `official_score` | decimal | Final IPCR score (1.00–5.00). This is what triggered the IDP. |
-| `official_rating` | string | `Outstanding`, `Very Satisfactory`, `Satisfactory`, `Unsatisfactory`, or `Poor` |
-| `pmt_adjusted_score` | decimal\|null | PMT-calibrated score override (if PMT adjusted it) |
-| `pmt_adjusted_rating` | string\|null | PMT-calibrated rating override |
-| `released_at` | ISO 8601\|null | When IPCR was officially released by PMT |
-
-#### `ipcr`
-
-| Field | Type | Description |
-|---|---|---|
-| `id` | integer | PMS IPCR record ID |
-| `functions` | array | Full IPCR breakdown — see below |
-| `weighted_summary` | array | Per-function weighted score summary |
-
-#### `ipcr.functions[].mfos[].indicators[]`
-
-| Field | Type | Description |
-|---|---|---|
-| `indicator_text` | string | The success indicator description |
-| `target_quantity` | number | Target number of outputs for the period |
-| `target_timeline` | string | e.g. `"Monthly"`, `"Quarterly"` |
-| `ratings.Q` | decimal\|null | Quality — average quality rating from supervisor |
-| `ratings.E` | decimal\|null | Efficiency — actual qty ÷ target qty × 5 |
-| `ratings.T` | decimal\|null | Timeliness — average timeliness rating from supervisor |
-| `ratings.A` | decimal\|null | Average of Q + E + T |
-| `ratings.actual_quantity` | decimal | Total quantity of outputs actually accomplished |
-| `standards` | array | QET rating scale descriptions (what each score means) |
-
-#### `ipcr.weighted_summary[]`
-
-| Field | Type | Description |
-|---|---|---|
-| `function_name` | string | Name of the function type |
-| `weight_percent` | decimal | Weight of this function in the overall score |
-| `average_rating` | decimal | Average A rating across all indicators in this function |
-| `weighted_score` | decimal | `average_rating × (weight_percent / 100)` |
+| `id` | integer | `users.id` in PMS — **the cross-system key** — store as `pms_user_id` |
+| `name` | string | `users.name` |
+| `email` | string | `users.email` — use for account provisioning |
+| `position` | string | `employees.position` in PMS |
+| `office_id` | integer | `employees.office_id` in PMS |
+| `office_name` | string | `offices.name` in PMS |
 
 #### `idp_rows[]`
 
-This is the **core training input** — what the employee identified as their development needs.
-
-| Field | Type | Description |
-|---|---|---|
-| `performance_gap` | string | What the employee struggles with |
-| `developmental_activity` | string | Planned training or intervention |
-| `support_needed` | string | Resources or support required |
-| `support_from_supervisor` | string | What the supervisor committed to provide |
-| `expected_completion` | string | Target completion timeline |
-| `results` | string | Outcome (filled after training — may be empty at submission) |
+| Field | Description |
+|---|---|
+| `performance_gap` | What the employee struggles with |
+| `developmental_activity` | Planned training — used as `training_title` in `TrainingApplication` |
+| `support_needed` | Resources or support required |
+| `support_from_supervisor` | What the supervisor committed to provide |
+| `expected_completion` | Target completion timeline |
+| `results` | Outcome after training (may be empty at submission) |
 
 ---
 
@@ -266,75 +274,50 @@ This is the **core training input** — what the employee identified as their de
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `status` | string | Must be `"acknowledged"` to mark sync as fully received. Any other value is stored as `"sent"`. |
-| `lnd_reference_id` | string\|null | L&D's internal reference ID for this training record. PMS stores it. **Echo this back in the training completion callback.** |
-
-**Error — HTTP 422 / 400 / 500:**
-```json
-{
-  "message": "Validation failed: employee.id is required"
-}
-```
-PMS will store the error message in `lnd_last_error` and mark the plan as `lnd_sync_status = failed`. PMT can retry.
+`lnd_reference_id` format: `LND-REF-{year}-{5-digit-seq}` e.g. `LND-REF-2026-00042`.
+PMS stores this in `development_plans.lnd_reference_id` AND `employees.lnd_reference_id`.
+Echo it back in the training completion callback.
 
 ---
 
-### What PMS does after a successful response
+## Part 2: Employee Redirect from PMS
 
-| Column | Before | After |
-|---|---|---|
-| `development_plans.status` | `submitted_to_pmt` | `submitted_to_ld` |
-| `development_plans.lnd_sync_status` | `not_sent` | `acknowledged` or `sent` |
-| `development_plans.lnd_reference_id` | `null` | value from L&D response |
-| `development_plans.submitted_to_ld_at` | `null` | current timestamp |
-| `users.training_locked` | `false` | `true` ← employee cannot log into PMS |
-
----
-
-## Part 2: Employee Redirect to L&D
-
-When a training-locked employee tries to log into smart-pms, they are redirected to the L&D website instead of the dashboard.
-
-### Redirect URL format
+When a training-locked employee tries to log into smart-pms, PMS redirects them to the L&D intake URL:
 
 ```
 https://{LND_HOST}/intake?pms_user_id=17&plan=LND-REF-2026-00042&sig={hmac}
 ```
 
-| Parameter | Description |
+| Parameter | Value Source |
 |---|---|
-| `pms_user_id` | The employee's PMS user ID |
-| `plan` | The `lnd_reference_id` returned by L&D — so L&D knows which training plan to show |
-| `sig` | HMAC-SHA256 signature over `pms_user_id + plan` using the shared `LND_REDIRECT_HMAC_SECRET` |
+| `pms_user_id` | `users.id` in PMS |
+| `plan` | `employees.lnd_reference_id` in PMS (the same value L&D returned) |
+| `sig` | HMAC-SHA256 of `pms_user_id + plan` using `LND_REDIRECT_HMAC_SECRET` |
 
-L&D must verify the `sig` to confirm the redirect came from PMS and was not tampered with.
+L&D should verify `sig` to confirm the redirect came from PMS.
+Use `plan` (`lnd_reference_id`) to look up the `training_referral` record and show the employee their training path.
 
-**If URL verification is not ready yet**, at minimum L&D should accept `pms_user_id` to pre-identify the employee on their login/onboarding page.
+The `IntakeController` at `app/Http/Controllers/IntakeController.php` handles this route.
 
 ---
 
-## Part 3: L&D → PMS (Training Completion Callback)
+## Part 3: Outbound to PMS — Training Completion Callback
 
-When the employee completes all training in L&D, L&D must notify PMS so the employee's account is unlocked.
+### Service (already built)
 
-### Endpoint PMS will build
+`App\Services\PmsCallbackService::notifyComplete()`
+
+Reads from `config('services.pms.base_url')` and `config('services.pms.callback_token')`.
+
+### Endpoint on PMS (already built)
 
 ```
-POST /api/lnd-callback/complete-training
+POST {PMS_BASE_URL}/api/lnd-callback/complete-training
 Authorization: Bearer {PMS_CALLBACK_TOKEN}
 Content-Type: application/json
-Accept: application/json
 ```
 
-- `PMS_CALLBACK_TOKEN` — a static Bearer token that PMS defines and shares with the L&D team
-- L&D stores this in its `.env` as `PMS_CALLBACK_TOKEN`
-- L&D stores the PMS base URL in its `.env` as `PMS_BASE_URL`
-
----
-
-### Callback Request Payload (L&D sends this)
+### Callback Payload
 
 ```json
 {
@@ -353,156 +336,184 @@ Accept: application/json
 }
 ```
 
-| Field | Required | Description |
+| Field | Required | Source |
 |---|---|---|
-| `pms_user_id` | yes | Must match `users.id` in PMS — primary lookup key |
-| `lnd_reference_id` | yes | Echo back what PMS sent — used for record matching |
-| `external_plan_id` | yes | Echo back `PMS-DP-{id}` — secondary verification |
-| `completed_at` | yes | ISO 8601 timestamp of training completion |
-| `courses_completed` | yes | Array of completed courses. Can be empty array `[]` if not tracked per-course. |
-| `trainer_remarks` | no | Optional narrative stored in PMS for PMT reference |
+| `pms_user_id` | yes | `training_referrals.pms_user_id` |
+| `lnd_reference_id` | yes | `training_referrals.lnd_reference_id` — echo back what PMS sent |
+| `external_plan_id` | yes | `training_referrals.external_plan_id` — echo back `PMS-DP-{id}` |
+| `completed_at` | yes | ISO 8601 — when training was marked complete |
+| `courses_completed` | yes | Array from `lnd_courses_completed`. Can be `[]` if not tracked per-course. |
+| `trainer_remarks` | no | Optional notes from the trainer |
+
+### What PMS Does After Receiving the Callback
+
+| Location | Column | Before | After |
+|---|---|---|---|
+| `development_plans` | `status` | `submitted_to_ld` | `completed` |
+| `development_plans` | `lnd_completed_at` | null | `completed_at` from payload |
+| `development_plans` | `lnd_completion_remarks` | null | `trainer_remarks` |
+| `development_plans` | `lnd_courses_completed` | null | `courses_completed` array |
+| `employees` | `training_locked` | `true` | `false` |
+| `employees` | `lnd_reference_id` | set | `null` (optional cleanup) |
+
+> Note: PMS currently has a bug where it writes to `users` instead of `employees` for the unlock.
+> That is documented in the PMS `L&D.md` and will be fixed there. L&D's callback payload itself is correct.
 
 ---
 
-### PMS Response to Callback
-
-**Success — HTTP 200 OK:**
-```json
-{
-  "ok": true,
-  "message": "Training completion recorded."
-}
-```
-
-**What PMS does after receiving the callback:**
-
-| Column | Before | After |
-|---|---|---|
-| `development_plans.status` | `submitted_to_ld` | `completed` |
-| `users.training_locked` | `true` | `false` ← employee can log into PMS again |
-
----
-
-## Part 4: Database Tables L&D needs to build
+## Part 4: L&D Database Schema
 
 ### `training_referrals`
-Primary intake table. One record per employee per IDP submission from PMS.
+Primary intake table. One record per IDP submission from PMS.
 
 ```sql
-id                  BIGINT PRIMARY KEY AUTO_INCREMENT
-lnd_reference_id    VARCHAR(64) UNIQUE NOT NULL   -- generated by L&D, e.g. "LND-REF-2026-00042"
-external_plan_id    VARCHAR(64) NOT NULL           -- "PMS-DP-42" from PMS
-source_system       VARCHAR(32) DEFAULT 'PMS'
-pms_user_id         BIGINT NOT NULL                -- employee.id from PMS payload
-pms_period_id       INT NOT NULL                   -- period.id
-period_name         VARCHAR(128)
-employee_name       VARCHAR(255)
-employee_email      VARCHAR(255)
-employee_position   VARCHAR(255)
-employee_office_id  INT
-employee_office     VARCHAR(255)
-official_score      DECIMAL(5,2)
-official_rating     VARCHAR(64)
-ipcr_snapshot       JSON                           -- full ipcr block from payload
-idp_rows            JSON                           -- full idp_rows array from payload
-status              VARCHAR(64) DEFAULT 'received' -- received, in_progress, completed
-received_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-completed_at        TIMESTAMP NULL
-pms_notified_at     TIMESTAMP NULL                 -- when callback was sent to PMS
-pms_notify_error    TEXT NULL                      -- if callback failed, store error here
-created_at          TIMESTAMP
-updated_at          TIMESTAMP
+id                   BIGINT PK AUTO_INCREMENT
+lnd_reference_id     VARCHAR(64) UNIQUE NOT NULL   -- "LND-REF-2026-00042"
+external_plan_id     VARCHAR(64) NOT NULL           -- "PMS-DP-42"
+source_system        VARCHAR(32) DEFAULT 'PMS'
+
+pms_user_id          BIGINT NOT NULL               -- users.id from PMS (cross-system key)
+pms_period_id        BIGINT NOT NULL               -- period.id from PMS
+period_name          VARCHAR(128) nullable
+
+employee_name        VARCHAR(255) nullable
+employee_email       VARCHAR(255) nullable
+employee_position    VARCHAR(255) nullable
+employee_office_id   INT nullable
+employee_office      VARCHAR(255) nullable
+
+official_score       DECIMAL(5,2) nullable
+official_rating      VARCHAR(64) nullable
+
+ipcr_snapshot        JSON NOT NULL                 -- full ipcr block from PMS payload
+idp_rows             JSON NOT NULL                 -- full idp_rows array from PMS payload
+
+status               VARCHAR(64) DEFAULT 'received'  -- received | in_progress | completed
+received_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+completed_at         TIMESTAMP nullable
+
+pms_notified_at      TIMESTAMP nullable            -- when callback was sent to PMS
+pms_notify_error     TEXT nullable                 -- error if callback failed
+
+created_at, updated_at
 ```
 
 ### `lnd_trainees`
 Cross-system identity map. One record per employee.
 
 ```sql
-id              BIGINT PRIMARY KEY AUTO_INCREMENT
+id              BIGINT PK AUTO_INCREMENT
 pms_user_id     BIGINT UNIQUE NOT NULL     -- stable link to PMS users.id
 name            VARCHAR(255)
 email           VARCHAR(255)
 position        VARCHAR(255)
 office_name     VARCHAR(255)
-lnd_user_id     BIGINT NULL                -- FK to L&D's own users/accounts table
-created_at      TIMESTAMP
-updated_at      TIMESTAMP
+lnd_user_id     BIGINT nullable            -- FK → L&D users.id
+created_at, updated_at
 ```
 
 ### `lnd_courses_completed`
-Per-course completion tracking for the callback payload.
+Per-course completion tracking (used to build the callback payload).
 
 ```sql
-id                      BIGINT PRIMARY KEY AUTO_INCREMENT
-training_referral_id    BIGINT NOT NULL    -- FK -> training_referrals.id
+id                      BIGINT PK AUTO_INCREMENT
+training_referral_id    BIGINT NOT NULL FK → training_referrals.id
 course_code             VARCHAR(64)
 title                   VARCHAR(255)
 completed_at            TIMESTAMP
-created_at              TIMESTAMP
-updated_at              TIMESTAMP
+created_at, updated_at
 ```
+
+### `training_applications`
+Created automatically per IDP row by `PmsIntakeController`. One application per developmental activity.
+
+Key columns relevant to integration:
+```sql
+training_referral_id   BIGINT nullable FK → training_referrals.id
+user_id                BIGINT FK → users.id (L&D user)
+employee_id            VARCHAR nullable
+training_title         VARCHAR
+training_type          VARCHAR
+status                 VARCHAR default 'applied'
+```
+
+When Secretariat marks a `TrainingApplication` linked to a `training_referral_id` as `completed`,
+`PmsCallbackService::notifyComplete()` should be called with the parent `TrainingReferral`.
 
 ---
 
-## Part 5: Environment Variables Summary
+## Part 5: L&D Files — What Needs Fixing
 
-### smart-pms `.env` (PMS team fills these in)
+| File | Method | Issue | Fix |
+|---|---|---|---|
+| `app/Http/Controllers/Api/PmsIntakeController.php` | `provisionUser()` | `'office' => $emp['office_name']` passed to `User::create()` but `office` is not a `users` column | Remove that line; office is already stored in `lnd_trainees.office_name` |
 
+**Files that are already correct:**
+- `app/Services/PmsCallbackService.php` — outbound callback is correct
+- `app/Http/Middleware/VerifyLndApiToken.php` — correct
+- `app/Models/TrainingReferral.php` — correct
+- `app/Models/LndTrainee.php` — correct
+- `routes/api.php` — correct
+- `config/services.php` — correct
+
+---
+
+## Part 6: Environment Variables
+
+### L&D `.env`
 ```env
-LND_BASE_URL=https://{lnd-host}          # L&D provides
-LND_API_TOKEN={token}                    # L&D decides and shares with PMS
-LND_TIMEOUT=20
-LND_REDIRECT_HMAC_SECRET={shared-secret} # Both teams agree on this value
-```
-
-### L&D `.env` (L&D team fills these in)
-
-```env
-PMS_BASE_URL=https://{pms-host}          # PMS provides
-PMS_CALLBACK_TOKEN={token}               # PMS decides and shares with L&D
-PMS_INBOUND_TOKEN={token}                # L&D decides — used to authenticate PMS inbound calls
+LND_API_TOKEN={token}                    # L&D generates this; PMS stores it as LND_API_TOKEN
 LND_REDIRECT_HMAC_SECRET={shared-secret} # Must match smart-pms value exactly
+PMS_BASE_URL=http://smart-pms.test       # PMS URL — use ngrok if cross-machine
+PMS_CALLBACK_TOKEN={token}               # PMS generates this; L&D stores it here
+PMS_TIMEOUT=20
 ```
 
----
+### config/services.php (L&D)
+```php
+'lnd' => [
+    'api_token'            => env('LND_API_TOKEN'),
+    'redirect_hmac_secret' => env('LND_REDIRECT_HMAC_SECRET'),
+],
+'pms' => [
+    'base_url'       => env('PMS_BASE_URL'),
+    'callback_token' => env('PMS_CALLBACK_TOKEN'),
+    'timeout'        => env('PMS_TIMEOUT', 20),
+],
+```
 
-## Part 6: What Each Side Needs to Build
+### Local Development Note
 
-### L&D must build:
-- [ ] `POST /api/lnd/development-plans` — intake endpoint with Bearer token auth
-- [ ] `training_referrals` migration + model
-- [ ] `lnd_trainees` migration + model (upsert on each intake)
-- [ ] `lnd_courses_completed` migration + model
-- [ ] `lnd_reference_id` generator (format: `LND-REF-{year}-{sequential}`)
-- [ ] Employee training path/dashboard inside L&D system
-- [ ] Outbound callback service — POST to PMS when training is marked complete
-- [ ] (Optional) URL signature verification for the redirect parameter `sig`
-
-### smart-pms must build:
-- [ ] `POST /api/lnd-callback/complete-training` — inbound webhook from L&D
-- [ ] `training_locked` column on `users` table migration
-- [ ] Login middleware — redirect locked employees to L&D URL
-- [ ] Add `employee.email` to `LndHandoffService::buildPayload()`
-
----
-
-## Part 7: Shared Secrets to Agree On
-
-Before either side goes live, both teams must exchange these values:
-
-| Value | Who generates it | Who needs it |
-|---|---|---|
-| `LND_API_TOKEN` | L&D team | PMS puts in `.env` |
-| `PMS_CALLBACK_TOKEN` | PMS team | L&D puts in `.env` |
-| `LND_REDIRECT_HMAC_SECRET` | Agree together | Both `.env` files |
-| `LND_BASE_URL` | L&D provides their URL | PMS puts in `.env` |
-| `PMS_BASE_URL` | PMS provides their URL | L&D puts in `.env` |
-
-For local development with ngrok:
-- L&D exposes their local server via ngrok → share the ngrok URL as `LND_BASE_URL` with PMS
-- PMS exposes their local server via ngrok → share the ngrok URL as `PMS_BASE_URL` with L&D
+`PMS_BASE_URL=http://smart-pms.test` only works if L&D and PMS run on the same machine (both on Herd).
+For cross-machine testing, use ngrok:
+- PMS exposes via ngrok → set that URL as `PMS_BASE_URL` in L&D's `.env`
+- L&D exposes via ngrok → set that URL as `LND_BASE_URL` in PMS's `.env`
 
 ---
 
-*Document prepared: July 18, 2026*
+## Part 7: Implementation Checklist
+
+### L&D already built:
+- [x] `POST /api/lnd/development-plans` endpoint with Bearer token auth
+- [x] `training_referrals` migration + model
+- [x] `lnd_trainees` migration + model
+- [x] `lnd_courses_completed` migration + model
+- [x] `lnd_reference_id` generator (`LND-REF-{year}-{seq}`)
+- [x] Auto-create `TrainingApplication` per IDP row on intake
+- [x] `PmsCallbackService` — outbound callback to PMS
+- [x] `VerifyLndApiToken` middleware
+- [x] Duplicate intake guard (idempotent on `external_plan_id`)
+
+### L&D still needs to fix:
+- [ ] `PmsIntakeController::provisionUser()` — remove `'office'` from `User::create()`
+- [ ] Ensure `PmsCallbackService::notifyComplete()` is called when Secretariat marks training complete (verify this trigger exists in the Secretariat portal controller)
+
+### PMS still needs to fix (see PMS `L&D.md`):
+- [ ] `DevelopmentPlanningController::submitToLd()` — lock employee via `employees` table
+- [ ] `LndCallbackController::completeTraining()` — unlock employee via `employees` table
+
+---
+
+*Document updated: August 22, 2026*
 *Both systems: Laravel + Inertia stack*
+*L&D stack: Laravel 11, Inertia, React (TSX), Spatie Permissions*

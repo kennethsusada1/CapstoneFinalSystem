@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminEmployeeController;
+use App\Http\Controllers\Admin\AdminHubController;
 use App\Http\Controllers\Admin\AdminLearningDevelopmentController;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\AdminReportController;
@@ -114,6 +115,12 @@ Route::middleware(['auth', 'role:system-admin'])->prefix('admin')->group(functio
     Route::get('/settings/export', [AdminReportController::class, 'export']);
     Route::get('/profile', [AdminProfileController::class, 'show']);
     Route::patch('/profile', [AdminProfileController::class, 'update']);
+
+    // HRMO Hub — PMS connection management
+    Route::get('/hub', [AdminHubController::class, 'index'])->name('admin.hub.index');
+    Route::post('/hub/accept', [AdminHubController::class, 'accept'])->name('admin.hub.accept');
+    Route::post('/hub/reject', [AdminHubController::class, 'reject'])->name('admin.hub.reject');
+    Route::post('/hub/disconnect', [AdminHubController::class, 'disconnect'])->name('admin.hub.disconnect');
 });
 
 Route::middleware(['auth', 'role:secretariat'])->prefix('secretariat')->group(function () {

@@ -13,6 +13,7 @@ const linkSets = {
         { href: '/admin', label: 'Dashboard', icon: 'bi-grid-1x2-fill' },
         { href: '/admin/users', label: 'Users', icon: 'bi-people-fill' },
         { href: '/admin/employees', label: 'Employee Records', icon: 'bi-building-fill' },
+        { href: '/admin/hub', label: 'HRMO Hub', icon: 'bi-grid-3x3-gap-fill' },
         { href: '/admin/settings', label: 'L&D Reports', icon: 'bi-bar-chart-fill' },
         { href: '/admin/profile', label: 'Profile', icon: 'bi-person-badge-fill' },
     ],
