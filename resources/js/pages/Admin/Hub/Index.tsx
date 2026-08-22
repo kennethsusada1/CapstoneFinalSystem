@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
@@ -261,18 +261,154 @@ function SidePanel({ connection, credentials, onClose }: {
     );
 }
 
+// ── Notification modal ───────────────────────────────────────────────────────
+
+function RequestModal({ connection, onAccept, onReject, onClose, loading }: {
+    connection: PmsConnection;
+    onAccept: () => void;
+    onReject: () => void;
+    onClose: () => void;
+    loading: boolean;
+}) {
+    return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Backdrop */}
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} />
+
+            {/* Modal */}
+            <div style={{
+                position: 'relative', width: '100%', maxWidth: 420,
+                background: 'var(--admin-card)', borderRadius: 16,
+                border: '1px solid var(--admin-border-strong)',
+                boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+                padding: '1.75rem',
+                animation: 'modalIn 0.2s ease-out',
+            }}>
+                {/* Icon + title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
+                    <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ca8a04', flexShrink: 0 }}>
+                        <i className="bi bi-link-45deg" style={{ fontSize: '1.4rem' }} />
+                    </div>
+                    <div>
+                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--admin-text-primary)' }}>
+                            Connection Request
+                        </div>
+                        <div style={{ fontSize: '0.73rem', color: 'var(--admin-text-muted)', marginTop: 2 }}>
+                            Smart PMS wants to connect to L&amp;D
+                        </div>
+                    </div>
+                </div>
+
+                {/* Details */}
+                <div style={{ padding: '0.85rem 1rem', borderRadius: 10, background: 'rgba(234,179,8,0.05)', border: '1px solid rgba(234,179,8,0.15)', marginBottom: '1.25rem' }}>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--admin-text-muted)', lineHeight: 1.6 }}>
+                        <div><strong style={{ color: 'var(--admin-text-primary)' }}>From:</strong> {connection.pms_base_url || 'Smart PMS'}</div>
+                        {connection.requested_at && (
+                            <div><strong style={{ color: 'var(--admin-text-primary)' }}>Received:</strong> {connection.requested_at}</div>
+                        )}
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '0.5rem', marginBottom: 0, lineHeight: 1.5 }}>
+                        Accepting this connection will enable employee training referrals and completion callbacks between the two systems.
+                    </p>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '0.65rem' }}>
+                    <button
+                        type="button"
+                        onClick={onAccept}
+                        disabled={loading}
+                        style={{ flex: 1, padding: '0.65rem', borderRadius: 10, border: 'none', background: '#10b981', color: '#fff', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'inherit', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
+                        <i className="bi bi-check-lg" style={{ marginRight: '0.35rem' }} />
+                        {loading ? 'Processing…' : 'Accept'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onReject}
+                        disabled={loading}
+                        style={{ flex: 1, padding: '0.65rem', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#f87171', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'inherit', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
+                        <i className="bi bi-x-lg" style={{ marginRight: '0.35rem' }} />
+                        Reject
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        style={{ padding: '0.65rem 0.85rem', borderRadius: 10, border: '1px solid var(--admin-border)', background: 'transparent', color: 'var(--admin-text-muted)', fontFamily: 'inherit', cursor: 'pointer', fontSize: '0.78rem' }}>
+                        Later
+                    </button>
+                </div>
+            </div>
+
+            <style>{`@keyframes modalIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }`}</style>
+        </div>
+    );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Index({ pmsConnection, lndCredentials }: Props) {
     const [open, setOpen] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [modalLoading, setModalLoading] = useState(false);
+    const prevStatus = React.useRef(pmsConnection.status);
 
     const cfg = PILLAR_CFG.pms;
     const isConnected = pmsConnection.status === 'connected';
     const isPending   = pmsConnection.status === 'pending';
     const isRejected  = pmsConnection.status === 'rejected';
 
+    // Poll every 5 seconds when disconnected or pending so we catch incoming requests instantly
+    React.useEffect(() => {
+        const shouldPoll = pmsConnection.status === 'disconnected' || pmsConnection.status === 'pending';
+        if (!shouldPoll) return;
+
+        const id = setInterval(() => {
+            router.reload({ only: ['pmsConnection'], preserveScroll: true });
+        }, 5000);
+
+        return () => clearInterval(id);
+    }, [pmsConnection.status]);
+
+    // Show notification modal when status transitions to 'pending'
+    React.useEffect(() => {
+        if (prevStatus.current !== 'pending' && pmsConnection.status === 'pending') {
+            setShowModal(true);
+        }
+        prevStatus.current = pmsConnection.status;
+    }, [pmsConnection.status]);
+
+    // Also show modal immediately if page loads with pending status
+    React.useEffect(() => {
+        if (pmsConnection.status === 'pending') {
+            setShowModal(true);
+        }
+    }, []);
+
+    function modalAction(url: string) {
+        setModalLoading(true);
+        router.post(url, {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setShowModal(false);
+                setOpen(false);
+                setTimeout(() => router.reload({ only: ['pmsConnection'] }), 500);
+            },
+            onFinish: () => setModalLoading(false),
+        });
+    }
+
     return (
         <AppLayout title="HRMO Hub">
+            {/* Notification modal — appears automatically when PMS sends a connection request */}
+            {showModal && isPending && (
+                <RequestModal
+                    connection={pmsConnection}
+                    loading={modalLoading}
+                    onAccept={() => modalAction('/admin/hub/accept')}
+                    onReject={() => modalAction('/admin/hub/reject')}
+                    onClose={() => setShowModal(false)}
+                />
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
 
                 {/* Page header card — identical to PMS */}
