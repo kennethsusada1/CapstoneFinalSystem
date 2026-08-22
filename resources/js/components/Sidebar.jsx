@@ -116,7 +116,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             <style>{`
                 .admin-sidebar {
                     position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
-                    padding: 1.5rem 1rem; background: linear-gradient(180deg, var(--admin-sidebar), rgba(8,14,22,0.98));
+                    padding: 1.5rem 1rem; background: linear-gradient(180deg, var(--admin-sidebar), var(--admin-bg-primary));
                     border-right: 1px solid var(--admin-border); backdrop-filter: blur(16px);
                     display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; z-index: 1000;
                     transition: width 0.2s ease, padding 0.2s ease, transform 0.22s ease;
@@ -133,7 +133,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 .sb-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 0.95rem; border-radius: 12px; color: var(--admin-text-secondary); text-decoration: none; font-size: 0.875rem; font-weight: 500; border: 1px solid transparent; transition: background 0.15s, color 0.15s; }
                 .sb-link:hover { background: rgba(59,130,246,0.08); color: var(--admin-text-primary); }
                 .sb-link-active { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: var(--admin-text-primary); }
-                .sb-link-support { background: rgba(255,255,255,0.02); }
+                .sb-link-support { background: color-mix(in srgb, var(--admin-card) 55%, transparent); }
                 .sb-link-icon { font-size: 1rem; flex-shrink: 0; }
                 .sb-mobile-only { display: none; }
                 @media (max-width: 767px) {

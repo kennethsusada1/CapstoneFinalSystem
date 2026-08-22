@@ -51,7 +51,7 @@ export default function Topbar({ title, description, darkMode, onToggleDarkMode,
     };
 
     return (
-        <header className="tb-root" style={{ position: 'sticky', top: 0, zIndex: 900, backdropFilter: 'blur(16px)', background: 'rgba(10,15,26,0.88)', borderBottom: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.65rem 1.25rem' }}>
+        <header className="tb-root" style={{ position: 'sticky', top: 0, zIndex: 900, backdropFilter: 'blur(16px)', background: 'var(--admin-topbar, rgba(10,15,26,0.88))', borderBottom: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.65rem 1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
                 <button type="button" className="tb-hamburger" onClick={onMobileMenuToggle} style={{ display: 'none', width: 32, height: 32, borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-card)', color: 'var(--admin-text-secondary)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                     <i className="bi bi-list" />
@@ -98,6 +98,12 @@ export default function Topbar({ title, description, darkMode, onToggleDarkMode,
                     .tb-info { display: none !important; }
                     .tb-bc-home, .tb-bc-past, .tb-bc-sep { display: none !important; }
                     .tb-bc-current { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; display: block; }
+                }
+                @media (max-width: 420px) {
+                    .tb-root { gap: .5rem !important; }
+                    .tb-root > div:last-child { gap: .35rem !important; }
+                    .tb-root > div:last-child > button:first-child { display: none; }
+                    .tb-bc-current { max-width: 46vw; }
                 }
             `}</style>
         </header>
