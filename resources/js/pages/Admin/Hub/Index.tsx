@@ -348,7 +348,7 @@ function RequestModal({ connection, onAccept, onReject, onClose, loading }: {
 
 export default function Index({ pmsConnection, lndCredentials }: Props) {
     const [open, setOpen] = useState(false);
-    const [showModal, setShowModal] = useState(false);
+    const [showModal, setShowModal] = useState(() => pmsConnection.status === 'pending');
     const [modalLoading, setModalLoading] = useState(false);
     const prevStatus = React.useRef(pmsConnection.status);
 
@@ -376,13 +376,6 @@ export default function Index({ pmsConnection, lndCredentials }: Props) {
         }
         prevStatus.current = pmsConnection.status;
     }, [pmsConnection.status]);
-
-    // Also show modal immediately if page loads with pending status
-    React.useEffect(() => {
-        if (pmsConnection.status === 'pending') {
-            setShowModal(true);
-        }
-    }, []);
 
     function modalAction(url: string) {
         setModalLoading(true);
