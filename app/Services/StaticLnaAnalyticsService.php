@@ -37,12 +37,13 @@ class StaticLnaAnalyticsService
         $profile = $this->profile($entry);
         $employeeRatings = collect($entry->skill_assessments ?? []);
         $supervisorRatings = collect($entry->supervisor_skill_assessments ?? []);
-        $lowRatedSkills = $employeeRatings
-            ->merge($supervisorRatings)
-            ->filter(fn (string $rating): bool => in_array($rating, ['1', '2'], true))
-            ->keys()
-            ->unique()
-            ->values();
+
+        // A skill is flagged as a gap if EITHER the employee OR the supervisor
+        // rated it low (1 or 2). Using merge() would overwrite employee ratings
+        // with supervisor ratings for the same key, so we union the low-rated keys.
+        $lowFromEmployee   = $employeeRatings->filter(fn (string $r): bool => in_array($r, ['1', '2'], true))->keys();
+        $lowFromSupervisor = $supervisorRatings->filter(fn (string $r): bool => in_array($r, ['1', '2'], true))->keys();
+        $lowRatedSkills    = $lowFromEmployee->merge($lowFromSupervisor)->unique()->sort()->values();
 
         return [
             'predictive_skills_gap' => $lowRatedSkills->isEmpty()

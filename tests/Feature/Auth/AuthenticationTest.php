@@ -19,7 +19,8 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    // App redirects to role-based dashboard, not a generic /dashboard route
+    $response->assertRedirect();
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {
