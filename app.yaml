@@ -16,7 +16,7 @@ annotations:
     composer_build_script: post-update-cmd
     composer_enable: true
     name: out
-    node_build_command: pnpm run build
+    node_build_command: pnpm run build && pnpm prune --prod
     node_install_inputs:
     - package.json
     node_package_manager: pnpm
