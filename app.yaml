@@ -20,6 +20,7 @@ annotations:
     node_install_inputs:
     - package.json
     node_package_manager: pnpm
+    optimize_node_dependencies: true
     php_framework: laravel
     php_public_dir: public
     phpix: true
