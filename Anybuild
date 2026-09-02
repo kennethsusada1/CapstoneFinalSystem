@@ -5,6 +5,7 @@ load("//anybuild/tools:laravel.bzl", "laravel_build", "laravel_config", "laravel
 
 config = laravel_config(
     schema = 1,
+    commands = {"after_deploy": "php artisan migrate --force"},
     node_package_manager = "pnpm",
     node_build_command = "pnpm run build",
     node_version = "24",
@@ -21,6 +22,5 @@ laravel_serve(
     config,
     build,
     name = "capstoneproject2026-test",
-    commands = {"after_deploy": "php artisan migrate --force"},
     build_post = [run("rm -rf node_modules", group = "build")],
 )
