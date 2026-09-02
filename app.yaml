@@ -16,14 +16,13 @@ annotations:
     composer_build_script: post-update-cmd
     composer_enable: true
     name: out
-    node_build_command: pnpm run build && pnpm prune --prod
+    node_build_command: pnpm run build
     node_install_inputs:
     - package.json
     node_package_manager: pnpm
-    optimize_node_dependencies: true
     php_framework: laravel
     php_public_dir: public
     phpix: true
   anybuild.run/provider: laravel
-  anybuild.run/version: 0.27.2
-  wasmer.io/version: 7.2.1
+  anybuild.run/version: 0.28.2
+  wasmer.io/version: 7.4.0

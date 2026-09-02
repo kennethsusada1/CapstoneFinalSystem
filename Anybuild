@@ -8,7 +8,6 @@ config = laravel_config(
     node_package_manager = "pnpm",
     node_build_command = "pnpm run build",
     node_version = "24",
-    optimize_node_dependencies = True,
     php_framework = "laravel",
     php_version = "8.3.29",
     php_public_dir = "public",
@@ -22,5 +21,6 @@ laravel_serve(
     config,
     build,
     name = "capstoneproject2026-test",
+    commands = {"after_deploy": "php artisan migrate --force"},
     build_post = [run("rm -rf node_modules", group = "build")],
 )
