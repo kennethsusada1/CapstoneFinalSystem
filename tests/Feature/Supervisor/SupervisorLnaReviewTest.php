@@ -170,3 +170,45 @@ test('supervisor can review an lna assessment outside their office', function ()
 
     expect($entry->fresh()->status)->toBe('reviewed');
 });
+
+test('supervisor dashboard exposes predictive gaps and prescriptive training rankings', function () {
+    $supervisor = makeLnaUser('supervisor', 'SUP-103', 'Operations');
+    $employee = makeLnaUser('employee', 'EMP-103', 'Operations');
+    $entry = LearningNeedsAnalysis::query()->create([
+        'user_id' => $employee->id,
+        'employee_id' => $employee->employee_id,
+        'focus_area' => 'Technical writing',
+        'competency_gap' => 'Needs stronger report writing',
+        'predictive_skills_gap' => 'Technical Writing',
+        'prescriptive_training_recommendation' => 'Technical Writing and Presentation Skills Training',
+        'training_needed' => true,
+        'training_need_probability' => .82,
+        'analytics_model_version' => 'test-model',
+        'analytics_generated_at' => now(),
+        'proposed_intervention' => 'Writing workshop',
+        'priority_level' => 'high',
+        'status' => 'reviewed',
+    ]);
+    $entry->recommendations()->create([
+        'rank' => 1,
+        'competency_name' => 'Technical Writing',
+        'probability' => .82,
+        'priority' => 'high',
+        'training_title' => 'Technical Writing and Presentation Skills Training',
+        'training_type' => 'Workshop',
+        'provider' => 'HRDC',
+        'recommendation_text' => 'Build stronger report writing skills.',
+        'status' => 'recommended',
+    ]);
+
+    $this->actingAs($supervisor)
+        ->get('/supervisor')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Supervisor/Dashboard')
+            ->where('teamAnalytics.reviewed_count', 1)
+            ->where('teamAnalytics.training_needed_count', 1)
+            ->where('teamAnalytics.watchlist.0.predictive_skills_gap', 'Technical Writing')
+            ->where('teamAnalytics.top_recommendations.0.training_title', 'Technical Writing and Presentation Skills Training')
+        );
+});

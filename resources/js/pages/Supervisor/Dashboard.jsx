@@ -28,7 +28,95 @@ function TrainingDonut({ data }) {
     );
 }
 
-export default function Dashboard({ supervisor, stats, teamProgress, attentionItems, trainingMix, upcomingPrograms }) {
+function percentage(value) {
+    const numeric = Number(value ?? 0);
+
+    return Number.isFinite(numeric) ? Math.max(0, Math.min(100, numeric * 100)) : 0;
+}
+
+function PredictiveSignal({ analytics }) {
+    if (!analytics?.reviewed_count) {
+        return <EmptyState icon="bi-activity" title="Awaiting predictive signals" text="Signals will appear after reviewed LNA assessments." />;
+    }
+
+    const score = percentage(analytics.average_probability);
+    const circumference = 2 * Math.PI * 46;
+    const dashOffset = circumference - (circumference * score) / 100;
+
+    return (
+        <div className="sup-analytics-overview">
+            <div className="sup-signal-ring" aria-label={`${score.toFixed(1)} percent average training need probability`}>
+                <svg viewBox="0 0 120 120" role="img" aria-hidden="true">
+                    <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(148,163,184,.13)" strokeWidth="8" />
+                    <circle cx="60" cy="60" r="46" fill="none" stroke="#67e8f9" strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} transform="rotate(-90 60 60)" />
+                </svg>
+                <div className="sup-signal-ring-label"><strong>{score.toFixed(0)}%</strong><span>need signal</span></div>
+            </div>
+            <div className="sup-analytics-metrics">
+                <div><span>Reviewed LNAs</span><strong>{analytics.reviewed_count}</strong></div>
+                <div><span>Team members</span><strong>{analytics.members_with_signal}</strong></div>
+                <div><span>Training flagged</span><strong className="is-warning">{analytics.training_needed_count}</strong></div>
+            </div>
+        </div>
+    );
+}
+
+function RecommendationRanking({ recommendations = [] }) {
+    if (!recommendations.length) {
+        return <EmptyState icon="bi-bar-chart-line" title="Awaiting recommendations" text="Ranked training actions will appear after supervisor review." />;
+    }
+
+    const maxProbability = Math.max(...recommendations.map((item) => Number(item.average_probability) || 0), 0.01);
+
+    return (
+        <div className="sup-recommendation-chart" role="list" aria-label="Team training recommendation ranking">
+            {recommendations.map((item, index) => {
+                const probability = percentage(item.average_probability);
+                const width = Math.max(8, (Number(item.average_probability || 0) / maxProbability) * 100);
+
+                return (
+                    <div className="sup-recommendation-row" key={item.training_title} role="listitem">
+                        <div className="sup-recommendation-copy">
+                            <div className="sup-row"><strong>{index + 1}. {item.training_title}</strong><StatusPill tone={item.priority === 'high' ? 'warning' : 'info'}>{item.priority}</StatusPill></div>
+                            <span>{item.competency_name} · {item.employee_count} team member{item.employee_count === 1 ? '' : 's'}</span>
+                        </div>
+                        <div className="sup-recommendation-track"><i style={{ width: `${width}%` }} /></div>
+                        <strong className="sup-recommendation-score">{probability.toFixed(1)}%</strong>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function AnalyticsWatchlist({ entries = [] }) {
+    if (!entries.length) {
+        return <EmptyState icon="bi-bullseye" title="No team analytics yet" text="Reviewed employee LNAs will populate this watchlist." />;
+    }
+
+    return (
+        <div className="sup-analytics-watchlist">
+            {entries.map((entry) => (
+                <div className="sup-analytics-watch-item" key={entry.lna_id}>
+                    <div className="sup-row">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', minWidth: 0 }}>
+                            <Initials name={entry.employee_name} />
+                            <div style={{ minWidth: 0 }}><strong className="sup-title">{entry.employee_name}</strong><div className="sup-muted">{entry.employee_id} · {entry.focus_area}</div></div>
+                        </div>
+                        <StatusPill tone={entry.training_needed ? 'warning' : 'success'}>{entry.training_needed ? 'Training need' : 'Monitor'}</StatusPill>
+                    </div>
+                    <div className="sup-analytics-watch-grid">
+                        <div><span>Predicted skills gap</span><strong>{entry.predictive_skills_gap}</strong></div>
+                        <div><span>Prescribed training</span><strong>{entry.prescriptive_training_recommendation}</strong></div>
+                        <div><span>Probability</span><strong className="sup-analytics-watch-score">{percentage(entry.training_need_probability).toFixed(1)}%</strong></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+export default function Dashboard({ supervisor, stats, teamProgress, attentionItems, trainingMix, upcomingPrograms, teamAnalytics }) {
     return (
         <AppLayout title="Supervisor Dashboard" description={`Supervisor / ${supervisor?.office ?? 'Team Overview'}`}>
             <div className="sup-page">
@@ -40,6 +128,19 @@ export default function Dashboard({ supervisor, stats, teamProgress, attentionIt
                     <StatCard label="Active Trainings" value={stats?.active_trainings ?? 0} icon="bi-mortarboard-fill" color="#fb923c" />
                     <StatCard label="Submitted LAP" value={stats?.submitted_lap ?? 0} icon="bi-journal-check" color="#34d399" />
                 </section>
+
+                <section className="sup-grid-2 sup-analytics-grid">
+                    <Panel title="Predictive Skills-Gap Signal" subtitle="Average training-need probability from reviewed team LNAs">
+                        <PredictiveSignal analytics={teamAnalytics} />
+                    </Panel>
+                    <Panel title="Prescriptive Training Ranking" subtitle="Most relevant training actions across the team">
+                        <RecommendationRanking recommendations={teamAnalytics?.top_recommendations ?? []} />
+                    </Panel>
+                </section>
+
+                <Panel title="Team Analytics Watchlist" subtitle="Employee-level skills gaps and recommended interventions" action={<Link className="sup-link" href="/supervisor/lna-reviews">Open LNA review desk</Link>}>
+                    <AnalyticsWatchlist entries={teamAnalytics?.watchlist ?? []} />
+                </Panel>
 
                 <section className="sup-grid-2">
                     <Panel title="Team Development Pulse" subtitle="Completion and learning activity by team member" action={<Link className="sup-link" href="/supervisor/team">View full team</Link>}>

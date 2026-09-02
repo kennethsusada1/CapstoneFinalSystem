@@ -21,9 +21,53 @@ class SupervisorPortalController extends Controller
         $supervisor = $this->supervisor($request);
         $team = $this->team($supervisor);
         $teamIds = $team->modelKeys();
-        $lnaEntries = LearningNeedsAnalysis::query()->whereIn('user_id', $teamIds)->with('user')->latest()->get();
+        $lnaEntries = LearningNeedsAnalysis::query()->whereIn('user_id', $teamIds)->with(['user', 'recommendations'])->latest()->get();
         $trainings = TrainingApplication::query()->whereIn('user_id', $teamIds)->with('user')->latest()->get();
         $lapEntries = LearningActionPlan::query()->whereIn('user_id', $teamIds)->with('user')->latest()->get();
+        $analyticsEntries = $lnaEntries->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
+            && $entry->analytics_generated_at !== null
+            && $entry->predictive_skills_gap !== null
+            && $entry->prescriptive_training_recommendation !== null);
+        $analyticsWatchlist = $analyticsEntries
+            ->sortByDesc(fn (LearningNeedsAnalysis $entry): float => (float) $entry->training_need_probability)
+            ->map(function (LearningNeedsAnalysis $entry): array {
+                return [
+                    'lna_id' => $entry->id,
+                    'employee_name' => $entry->user->name,
+                    'employee_id' => $entry->employee_id,
+                    'focus_area' => $entry->focus_area,
+                    'predictive_skills_gap' => $entry->predictive_skills_gap,
+                    'prescriptive_training_recommendation' => $entry->prescriptive_training_recommendation,
+                    'training_needed' => (bool) $entry->training_needed,
+                    'training_need_probability' => (float) $entry->training_need_probability,
+                    'analytics_model_version' => $entry->analytics_model_version,
+                ];
+            })->values();
+        $trainingRankings = $analyticsEntries
+            ->flatMap(fn (LearningNeedsAnalysis $entry) => $entry->recommendations->sortBy('rank')->take(3)->map(fn ($recommendation): array => [
+                'training_title' => $recommendation->training_title,
+                'competency_name' => $recommendation->competency_name,
+                'probability' => (float) $recommendation->probability,
+                'priority' => $recommendation->priority,
+                'employee_id' => $entry->user_id,
+            ]))
+            ->groupBy('training_title')
+            ->map(function ($recommendations): array {
+                $first = $recommendations->first();
+
+                return [
+                    'training_title' => $first['training_title'],
+                    'competency_name' => $first['competency_name'],
+                    'average_probability' => round((float) $recommendations->avg('probability'), 4),
+                    'employee_count' => $recommendations->pluck('employee_id')->unique()->count(),
+                    'priority' => $recommendations->contains(fn (array $item): bool => $item['priority'] === 'high')
+                        ? 'high'
+                        : ($first['priority'] ?? 'medium'),
+                ];
+            })
+            ->sortByDesc('average_probability')
+            ->values()
+            ->take(5);
 
         $pendingLna = $lnaEntries->where('status', 'submitted');
         $activeTrainings = $trainings->where('status', 'ongoing');
@@ -57,6 +101,14 @@ class SupervisorPortalController extends Controller
                 'pending_lna' => $pendingLna->count(),
                 'active_trainings' => $activeTrainings->count(),
                 'submitted_lap' => $lapEntries->whereIn('status', ['submitted', 'completed'])->count(),
+            ],
+            'teamAnalytics' => [
+                'reviewed_count' => $analyticsEntries->count(),
+                'members_with_signal' => $analyticsEntries->pluck('user_id')->unique()->count(),
+                'training_needed_count' => $analyticsEntries->where('training_needed', true)->count(),
+                'average_probability' => round((float) ($analyticsEntries->avg(fn (LearningNeedsAnalysis $entry): float => (float) $entry->training_need_probability) ?? 0), 4),
+                'watchlist' => $analyticsWatchlist->take(6)->values(),
+                'top_recommendations' => $trainingRankings,
             ],
             'teamProgress' => $team->map(function (User $employee) use ($lnaEntries, $trainings, $lapEntries) {
                 $employeeTrainings = $trainings->where('user_id', $employee->id);

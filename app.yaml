@@ -23,6 +23,8 @@ annotations:
     php_framework: laravel
     php_public_dir: public
     phpix: true
+    commands:
+      after_deploy: php artisan migrate --force
   anybuild.run/provider: laravel
   anybuild.run/version: 0.28.2
   wasmer.io/version: 7.4.0
