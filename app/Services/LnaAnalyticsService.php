@@ -43,9 +43,10 @@ class LnaAnalyticsService
             ->count();
         $recommendationCatalog = $model['recommendation_catalog'] ?? [];
         $threshold = (float) ($model['feature_schema']['threshold'] ?? 0.5);
+        $contextFamily = $this->inferContextFamily($entry);
 
         $predictions = $employeeRatings
-            ->map(function (mixed $employeeRating, string $skill) use ($entry, $model, $supervisorRatings, $trainingCount, $recommendationCatalog, $threshold, $fallback, $employeeRecord): ?array {
+            ->map(function (mixed $employeeRating, string $skill) use ($entry, $model, $supervisorRatings, $trainingCount, $recommendationCatalog, $threshold, $fallback, $employeeRecord, $contextFamily): ?array {
                 $employeeScore = $this->rating($employeeRating);
 
                 if ($employeeScore === null) {
@@ -91,11 +92,28 @@ class LnaAnalyticsService
                         $skillGap,
                     ),
                     'skill_gap' => round($skillGap, 2),
+                    'context_match' => $contextFamily === null || $this->matchesContext(
+                        $contextFamily,
+                        $skill,
+                        $category,
+                        $trainingTitle,
+                    ),
                 ];
             })
             ->filter()
             ->sortByDesc('probability')
             ->values();
+
+        // The logistic model estimates the likelihood of a training need for
+        // every assessed skill. The LNA's focus area is the business context
+        // that determines which of those predictions should be surfaced to
+        // the supervisor. Without this filter, an unrelated high-probability
+        // skill can displace the requested communication recommendation.
+        if ($contextFamily !== null) {
+            $predictions = $predictions
+                ->filter(fn (array $prediction): bool => $prediction['context_match'])
+                ->values();
+        }
 
         $overallProbability = (float) ($predictions->max('probability') ?? 0);
         $recommendations = $predictions
@@ -104,6 +122,7 @@ class LnaAnalyticsService
             ->values()
             ->map(function (array $prediction, int $index): array {
                 unset($prediction['skill_gap']);
+                unset($prediction['context_match']);
                 $prediction['rank'] = $index + 1;
 
                 return $prediction;
@@ -306,6 +325,114 @@ class LnaAnalyticsService
             str_contains($position, 'nurse') || str_contains($position, 'medical') => 'health',
             default => '',
         };
+    }
+
+    private function inferContextFamily(LearningNeedsAnalysis $entry): ?string
+    {
+        $context = strtolower(trim(implode(' ', array_filter([
+            $entry->focus_area,
+            $entry->competency_gap,
+            $entry->proposed_intervention,
+        ], fn (mixed $value): bool => is_string($value) && trim($value) !== ''))));
+
+        if ($context === '') {
+            return null;
+        }
+
+        $families = [
+            'communication' => [
+                'communicat', 'writing', 'report', 'present', 'public speak',
+                'listen', 'correspond', 'negotiat', 'stakeholder', 'facilitat',
+                'client', 'customer', 'media',
+            ],
+            'leadership' => [
+                'leadership', 'leader', 'supervis', 'team management', 'delegat',
+                'coaching', 'coach', 'motivat', 'conflict resolution',
+            ],
+            'digital_data' => [
+                'digital', 'data', 'excel', 'computer', 'system', 'database',
+                'information technology', 'ict',
+            ],
+            'planning' => [
+                'project', 'planning', 'plan', 'monitor', 'implementation',
+                'scheduling',
+            ],
+            'ethics_compliance' => [
+                'integrity', 'professionalism', 'ethic', 'compliance', 'risk',
+                'code of conduct',
+            ],
+            'adaptability' => [
+                'adapt', 'flexib', 'resilien', 'stress management', 'innovation',
+                'creative',
+            ],
+            'organization' => [
+                'time management', 'multitask', 'resource management',
+                'administrative', 'organization',
+            ],
+            'problem_solving' => [
+                'problem solving', 'analytical thinking', 'critical thinking',
+                'troubleshoot',
+            ],
+        ];
+
+        foreach ($families as $family => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($context, $keyword)) {
+                    return $family;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function matchesContext(string $family, string $skill, string $category, string $trainingTitle): bool
+    {
+        $candidate = strtolower(trim($skill.' '.$category.' '.$trainingTitle));
+
+        $keywords = match ($family) {
+            'communication' => [
+                'communication', 'writing', 'report', 'present', 'speaking',
+                'listen', 'correspond', 'negotiat', 'stakeholder', 'facilitat',
+                'client', 'customer', 'media',
+            ],
+            'leadership' => [
+                'leadership', 'leader', 'supervis', 'team management', 'delegat',
+                'coach', 'motivat', 'conflict',
+            ],
+            'digital_data' => [
+                'digital', 'data', 'excel', 'computer', 'system', 'database',
+                'information technology', 'ict',
+            ],
+            'planning' => [
+                'project', 'planning', 'plan', 'monitor', 'implementation',
+                'scheduling',
+            ],
+            'ethics_compliance' => [
+                'integrity', 'professional', 'ethic', 'compliance', 'risk',
+                'code of conduct',
+            ],
+            'adaptability' => [
+                'adapt', 'flexib', 'resilien', 'stress', 'innovation', 'creative',
+            ],
+            'organization' => [
+                'time management', 'multitask', 'resource management',
+                'administrative', 'organization',
+            ],
+            'problem_solving' => [
+                'problem solving', 'analytical', 'critical thinking',
+                'troubleshoot',
+            ],
+            default => [],
+        };
+
+        foreach ($keywords as $keyword) {
+            if (str_contains($candidate, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

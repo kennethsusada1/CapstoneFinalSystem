@@ -59,6 +59,62 @@ test('the exported logistic model generates ranked lna recommendations', functio
         ->and($analytics['recommendations'][0]['probability'])->toBeGreaterThanOrEqual($analytics['recommendations'][min(1, count($analytics['recommendations']) - 1)]['probability']);
 });
 
+test('focused communication needs do not surface unrelated skills', function () {
+    $user = User::factory()->create([
+        'employee_id' => 'EMP-AI-COMM-001',
+        'office' => 'Operations',
+    ]);
+
+    EmployeeRecord::query()->create([
+        'employee_id' => 'EMP-AI-COMM-001',
+        'first_name' => 'Communication',
+        'last_name' => 'Test',
+        'office' => 'Operations',
+        'position' => 'Staff',
+        'employment_status' => 'Permanent',
+    ]);
+
+    $entry = LearningNeedsAnalysis::query()->create([
+        'user_id' => $user->id,
+        'employee_id' => $user->employee_id,
+        'ipcr_rating' => '3.2',
+        'skill_assessments' => [
+            'Communication Skills' => '1',
+            'Technical Writing' => '1',
+            'Analytical Thinking' => '1',
+            'Troubleshooting' => '1',
+            'Integrity and Honesty' => '1',
+            'Teamwork' => '1',
+        ],
+        'supervisor_skill_assessments' => [
+            'Communication Skills' => '1',
+            'Technical Writing' => '1',
+            'Analytical Thinking' => '1',
+            'Troubleshooting' => '1',
+            'Integrity and Honesty' => '1',
+            'Teamwork' => '1',
+        ],
+        'focus_area' => 'Communication Skills',
+        'competency_gap' => 'Needs stronger communication and presentation skills',
+        'proposed_intervention' => 'Communication skills training',
+        'priority_level' => 'high',
+        'status' => 'reviewed',
+    ]);
+
+    $analytics = app(LnaAnalyticsService::class)->generate($entry);
+    $recommendedSkills = collect($analytics['recommendations'])->pluck('competency_name');
+
+    expect($recommendedSkills)->toContain('Communication Skills')
+        ->and($recommendedSkills)->not->toContain('Analytical Thinking')
+        ->and($recommendedSkills)->not->toContain('Troubleshooting')
+        ->and($recommendedSkills)->not->toContain('Integrity and Honesty')
+        ->and($recommendedSkills)->not->toContain('Teamwork')
+        ->and(collect($analytics['recommendations'])->every(fn (array $recommendation): bool => (bool) preg_match(
+            '/communication|writing|present|speaking|listen|stakeholder|client|customer|negotiat/i',
+            $recommendation['training_title'].' '.$recommendation['competency_category'],
+        )))->toBeTrue();
+});
+
 test('the employee dashboard exposes reviewed predictive and prescriptive analytics', function () {
     $user = User::factory()->create([
         'employee_id' => 'EMP-AI-002',
