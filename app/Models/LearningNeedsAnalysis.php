@@ -29,6 +29,9 @@ use Illuminate\Support\Carbon;
  * @property string $competency_gap
  * @property string|null $predictive_skills_gap
  * @property string|null $prescriptive_training_recommendation
+ * @property bool|null $training_needed
+ * @property float|null $training_need_probability
+ * @property string|null $analytics_model_version
  * @property string $proposed_intervention
  * @property string $priority_level
  * @property string $status
@@ -60,6 +63,9 @@ use Illuminate\Support\Carbon;
     'competency_gap',
     'predictive_skills_gap',
     'prescriptive_training_recommendation',
+    'training_needed',
+    'training_need_probability',
+    'analytics_model_version',
     'proposed_intervention',
     'priority_level',
     'status',
@@ -77,6 +83,8 @@ class LearningNeedsAnalysis extends Model
             'submitted_on' => 'date',
             'reviewed_at' => 'datetime',
             'analytics_generated_at' => 'datetime',
+            'training_needed' => 'boolean',
+            'training_need_probability' => 'decimal:4',
             'core_functions' => 'array',
             'support_functions' => 'array',
             'skill_assessments' => 'array',
@@ -110,5 +118,13 @@ class LearningNeedsAnalysis extends Model
     public function trainingApplications(): HasMany
     {
         return $this->hasMany(TrainingApplication::class);
+    }
+
+    /**
+     * @return HasMany<LnaRecommendation, $this>
+     */
+    public function recommendations(): HasMany
+    {
+        return $this->hasMany(LnaRecommendation::class);
     }
 }

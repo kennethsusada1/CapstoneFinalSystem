@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmptyState, Initials, PageHero, Panel, StatCard, StatusPill, SupervisorStyles } from '../Shared';
 
 const toneFor = (status) => status === 'endorsed' ? 'success' : status === 'draft' ? 'info' : 'warning';

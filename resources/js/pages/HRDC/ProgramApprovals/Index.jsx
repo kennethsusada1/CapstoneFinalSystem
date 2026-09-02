@@ -1,6 +1,6 @@
 import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmptyState, HrdcStyles, PageHero, Panel, StatCard, StatusPill } from '../Shared';
 
 const tone = (status) => status === 'approved' ? 'success' : status === 'disapproved' ? 'danger' : 'warning';

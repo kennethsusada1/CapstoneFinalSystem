@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmptyState, Initials, PageHero, Panel, SecretariatStyles, StatCard, StatusPill } from './Shared';
 
 const toneFor = (status) => status === 'completed' || status === 'received' ? 'success' : status === 'ongoing' ? 'info' : status === 'rejected' ? 'danger' : 'warning';

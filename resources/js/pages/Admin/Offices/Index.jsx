@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 
 const cardStyle = {
     background: 'var(--admin-card)',

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Supervisor;
 use App\Http\Controllers\Controller;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\User;
-use App\Services\StaticLnaAnalyticsService;
+use App\Services\LnaAnalyticsService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,7 +23,7 @@ class SupervisorLnaController extends Controller
         $teamOffice = $this->effectiveOffice($supervisor);
 
         $entries = LearningNeedsAnalysis::query()
-            ->with(['user.employeeRecord', 'reviewer'])
+            ->with(['user.employeeRecord', 'reviewer', 'recommendations'])
             ->latest('submitted_on')
             ->latest('id')
             ->get()
@@ -61,6 +61,19 @@ class SupervisorLnaController extends Controller
                     'review_remarks' => $entry->review_remarks,
                     'reviewed_at' => $entry->reviewed_at?->toDateTimeString(),
                     'reviewed_by' => $entry->reviewer?->name,
+                    'predictive_skills_gap' => $entry->predictive_skills_gap,
+                    'prescriptive_training_recommendation' => $entry->prescriptive_training_recommendation,
+                    'training_needed' => $entry->training_needed,
+                    'training_need_probability' => $entry->training_need_probability,
+                    'analytics_model_version' => $entry->analytics_model_version,
+                    'recommendations' => $entry->recommendations->sortBy('rank')->values()->map(fn ($recommendation): array => [
+                        'rank' => $recommendation->rank,
+                        'competency_name' => $recommendation->competency_name,
+                        'probability' => (float) $recommendation->probability,
+                        'priority' => $recommendation->priority,
+                        'training_title' => $recommendation->training_title,
+                        'recommendation_text' => $recommendation->recommendation_text,
+                    ])->all(),
                 ];
             }),
         ]);
@@ -69,7 +82,7 @@ class SupervisorLnaController extends Controller
     public function update(
         Request $request,
         LearningNeedsAnalysis $learningNeedsAnalysis,
-        StaticLnaAnalyticsService $analyticsService,
+        LnaAnalyticsService $analyticsService,
     ): RedirectResponse
     {
         $learningNeedsAnalysis->loadMissing('user.employeeRecord');
@@ -110,19 +123,30 @@ class SupervisorLnaController extends Controller
         ]);
 
         if ($validated['status'] === 'reviewed') {
+            $analytics = $analyticsService->generate($learningNeedsAnalysis);
             $learningNeedsAnalysis->fill([
-                ...$analyticsService->generate($learningNeedsAnalysis),
+                'predictive_skills_gap' => $analytics['predictive_skills_gap'],
+                'prescriptive_training_recommendation' => $analytics['prescriptive_training_recommendation'],
+                'training_needed' => $analytics['training_needed'],
+                'training_need_probability' => $analytics['training_need_probability'],
+                'analytics_model_version' => $analytics['analytics_model_version'],
                 'analytics_generated_at' => now(),
             ]);
         } else {
+            $analytics = ['recommendations' => []];
             $learningNeedsAnalysis->fill([
                 'predictive_skills_gap' => null,
                 'prescriptive_training_recommendation' => null,
+                'training_needed' => null,
+                'training_need_probability' => null,
+                'analytics_model_version' => null,
                 'analytics_generated_at' => null,
             ]);
         }
 
         $learningNeedsAnalysis->save();
+        $learningNeedsAnalysis->recommendations()->delete();
+        $learningNeedsAnalysis->recommendations()->createMany($analytics['recommendations']);
 
         $message = $validated['status'] === 'reviewed'
             ? 'The employee LNA assessment has been marked as reviewed.'

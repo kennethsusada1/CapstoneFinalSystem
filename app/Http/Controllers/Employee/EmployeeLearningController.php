@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
-use App\Services\StaticLnaAnalyticsService;
+use App\Services\LnaAnalyticsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -20,7 +20,7 @@ class EmployeeLearningController extends Controller
      */
     protected function recommendationProfile(LearningNeedsAnalysis $entry): array
     {
-        return app(StaticLnaAnalyticsService::class)->recommendation($entry);
+        return app(LnaAnalyticsService::class)->recommendation($entry);
     }
 
     /**
@@ -103,6 +103,7 @@ class EmployeeLearningController extends Controller
             ->get();
         $lnaEntries = LearningNeedsAnalysis::query()
             ->where('user_id', $user->id)
+            ->with('recommendations')
             ->latest()
             ->get();
         $lapEntries = LearningActionPlan::query()
@@ -134,6 +135,7 @@ class EmployeeLearningController extends Controller
         $recommendations = $this->recommendationsFor(
             LearningNeedsAnalysis::query()
                 ->where('user_id', $user->id)
+                ->with('recommendations')
                 ->latest()
                 ->get(),
         );
@@ -204,6 +206,7 @@ class EmployeeLearningController extends Controller
             ->whereNotNull('analytics_generated_at')
             ->whereNotNull('predictive_skills_gap')
             ->whereNotNull('prescriptive_training_recommendation')
+            ->with('recommendations')
             ->first();
 
         if (! $lna) {

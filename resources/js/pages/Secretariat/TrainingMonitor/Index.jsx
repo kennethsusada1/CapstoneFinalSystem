@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmptyState, PageHero, Panel, SecretariatStyles, StatCard, StatusPill } from '../Shared';
 
 export default function Index({ activities, programs }) {

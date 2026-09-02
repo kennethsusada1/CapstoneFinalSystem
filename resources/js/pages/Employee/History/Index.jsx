@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmployeeStyles, EmptyState, PageHero, Panel, StatCard, StatusPill } from '../Shared';
 
 export default function Index({ history }) {

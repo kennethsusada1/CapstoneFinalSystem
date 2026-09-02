@@ -1,0 +1,1251 @@
+{
+  "model_version": "lna-logistic-v1",
+  "algorithm": "binary logistic regression with L2 regularization",
+  "target": "training_needed",
+  "trained_at": "2026-08-24T09:56:25.655461+00:00",
+  "dataset": {
+    "path": "lna_competency_records.csv",
+    "rows": 15120,
+    "years": [
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "training_rows": 12096,
+    "validation_rows": 3024,
+    "synthetic": true
+  },
+  "validation": {
+    "train_years": [
+      2022,
+      2023,
+      2024,
+      2025
+    ],
+    "test_years": [
+      2026
+    ],
+    "metrics": {
+      "rows": 3024,
+      "positive_rate": 0.0651,
+      "accuracy": 0.9653,
+      "precision": 1.0,
+      "recall": 0.467,
+      "f1": 0.6367,
+      "roc_auc": 0.9899,
+      "log_loss": 0.1098
+    }
+  },
+  "training_metrics": {
+    "rows": 15120,
+    "positive_rate": 0.1033,
+    "accuracy": 0.9542,
+    "precision": 0.9977,
+    "recall": 0.5576,
+    "f1": 0.7154,
+    "roc_auc": 0.9855,
+    "log_loss": 0.1474
+  },
+  "feature_schema": {
+    "numeric_features": [
+      "employee_assessment",
+      "supervisor_assessment",
+      "required_level",
+      "skill_gap",
+      "ipcr_rating",
+      "trainings_last_3_years",
+      "years_of_service",
+      "seniority_level"
+    ],
+    "categorical_features": [
+      "role_family",
+      "education_level",
+      "employment_status",
+      "competency_category"
+    ],
+    "numeric_means": {
+      "employee_assessment": 2.9300925925925925,
+      "supervisor_assessment": 2.7395502645502647,
+      "required_level": 3.0523148148148147,
+      "skill_gap": 0.4975529100529101,
+      "ipcr_rating": 4.067952380952381,
+      "trainings_last_3_years": 1.8773809523809524,
+      "years_of_service": 11.761904761904763,
+      "seniority_level": 2.4404761904761907
+    },
+    "numeric_scales": {
+      "employee_assessment": 0.7143237760533225,
+      "supervisor_assessment": 0.6937146454978711,
+      "required_level": 0.7338030143400851,
+      "skill_gap": 0.6459022982979377,
+      "ipcr_rating": 0.27978069237827047,
+      "trainings_last_3_years": 1.6037048765485997,
+      "years_of_service": 6.628077088846478,
+      "seniority_level": 0.9922460149554703
+    },
+    "categories": {
+      "role_family": [
+        "accounting",
+        "administration",
+        "agriculture",
+        "assessment",
+        "audit",
+        "budget",
+        "communications",
+        "cooperative",
+        "corrections",
+        "disaster",
+        "executive",
+        "general_services",
+        "health",
+        "hospital",
+        "hr",
+        "ict",
+        "legal",
+        "legislative",
+        "planning",
+        "procurement",
+        "security",
+        "treasury",
+        "veterinary"
+      ],
+      "education_level": [
+        "Bachelor of Science in Medical Technology",
+        "Bachelor of Science in Nursing",
+        "Bachelor's Degree",
+        "Bachelor's Degree - Certified Public Accountant",
+        "Bachelor's Degree in Computer Science",
+        "Bachelor's Degree in Information Technology",
+        "Doctor of Medicine",
+        "Doctor of Medicine with Master's Units",
+        "Doctor of Veterinary Medicine",
+        "Doctor of Veterinary Medicine with Master's Units",
+        "High School Graduate",
+        "Juris Doctor",
+        "Master's Degree",
+        "Master's Units",
+        "Technical/Vocational Certificate"
+      ],
+      "employment_status": [
+        "Casual",
+        "Contractual",
+        "Job Order",
+        "Permanent"
+      ],
+      "competency_category": [
+        "Core - Adaptability",
+        "Core - Client-Focused",
+        "Core - Communication",
+        "Core - Ethical/Professional",
+        "Core - Interpersonal",
+        "Core - Organizational",
+        "Core - Problem Solving",
+        "Functional",
+        "Functional - Accounting",
+        "Functional - Administration",
+        "Functional - Assessment",
+        "Functional - Audit",
+        "Functional - Budget",
+        "Functional - Communications",
+        "Functional - Cooperative",
+        "Functional - Corrections",
+        "Functional - Disaster",
+        "Functional - Emergency Management",
+        "Functional - Executive",
+        "Functional - General Services",
+        "Functional - Health",
+        "Functional - Hospital",
+        "Functional - Hr",
+        "Functional - Ict",
+        "Functional - Legal",
+        "Functional - Legislative",
+        "Functional - Planning",
+        "Functional - Procurement",
+        "Functional - Security",
+        "Functional - Treasury"
+      ]
+    },
+    "feature_names": [
+      "employee_assessment",
+      "supervisor_assessment",
+      "required_level",
+      "skill_gap",
+      "ipcr_rating",
+      "trainings_last_3_years",
+      "years_of_service",
+      "seniority_level",
+      "role_family=accounting",
+      "role_family=administration",
+      "role_family=agriculture",
+      "role_family=assessment",
+      "role_family=audit",
+      "role_family=budget",
+      "role_family=communications",
+      "role_family=cooperative",
+      "role_family=corrections",
+      "role_family=disaster",
+      "role_family=executive",
+      "role_family=general_services",
+      "role_family=health",
+      "role_family=hospital",
+      "role_family=hr",
+      "role_family=ict",
+      "role_family=legal",
+      "role_family=legislative",
+      "role_family=planning",
+      "role_family=procurement",
+      "role_family=security",
+      "role_family=treasury",
+      "role_family=veterinary",
+      "education_level=Bachelor of Science in Medical Technology",
+      "education_level=Bachelor of Science in Nursing",
+      "education_level=Bachelor's Degree",
+      "education_level=Bachelor's Degree - Certified Public Accountant",
+      "education_level=Bachelor's Degree in Computer Science",
+      "education_level=Bachelor's Degree in Information Technology",
+      "education_level=Doctor of Medicine",
+      "education_level=Doctor of Medicine with Master's Units",
+      "education_level=Doctor of Veterinary Medicine",
+      "education_level=Doctor of Veterinary Medicine with Master's Units",
+      "education_level=High School Graduate",
+      "education_level=Juris Doctor",
+      "education_level=Master's Degree",
+      "education_level=Master's Units",
+      "education_level=Technical/Vocational Certificate",
+      "employment_status=Casual",
+      "employment_status=Contractual",
+      "employment_status=Job Order",
+      "employment_status=Permanent",
+      "competency_category=Core - Adaptability",
+      "competency_category=Core - Client-Focused",
+      "competency_category=Core - Communication",
+      "competency_category=Core - Ethical/Professional",
+      "competency_category=Core - Interpersonal",
+      "competency_category=Core - Organizational",
+      "competency_category=Core - Problem Solving",
+      "competency_category=Functional",
+      "competency_category=Functional - Accounting",
+      "competency_category=Functional - Administration",
+      "competency_category=Functional - Assessment",
+      "competency_category=Functional - Audit",
+      "competency_category=Functional - Budget",
+      "competency_category=Functional - Communications",
+      "competency_category=Functional - Cooperative",
+      "competency_category=Functional - Corrections",
+      "competency_category=Functional - Disaster",
+      "competency_category=Functional - Emergency Management",
+      "competency_category=Functional - Executive",
+      "competency_category=Functional - General Services",
+      "competency_category=Functional - Health",
+      "competency_category=Functional - Hospital",
+      "competency_category=Functional - Hr",
+      "competency_category=Functional - Ict",
+      "competency_category=Functional - Legal",
+      "competency_category=Functional - Legislative",
+      "competency_category=Functional - Planning",
+      "competency_category=Functional - Procurement",
+      "competency_category=Functional - Security",
+      "competency_category=Functional - Treasury"
+    ],
+    "weights": [
+      -0.1103119667,
+      -0.4691089246,
+      0.3658162356,
+      0.8775705649,
+      -0.1950288611,
+      -0.0907216945,
+      -0.0957294338,
+      0.0418853965,
+      0.0011759095,
+      -0.0246913006,
+      0.0144459455,
+      -0.002248312,
+      0.0031650233,
+      0.0101666893,
+      -0.0014895835,
+      0.0074363279,
+      -0.0001000176,
+      0.0069786265,
+      0.0111604294,
+      -0.0236367784,
+      -0.0070625236,
+      0.0112964422,
+      -0.0018324968,
+      -0.0052805944,
+      0.0074395676,
+      0.0030622093,
+      -0.0017398678,
+      -0.0044512395,
+      0.0007647594,
+      0.0005900283,
+      -0.0053494052,
+      0.0108090038,
+      -0.0018783862,
+      -0.0060437552,
+      -0.0014376097,
+      -0.0038639249,
+      -0.0014166695,
+      0.0066363875,
+      -0.0017047364,
+      -0.0037705504,
+      -0.0015788548,
+      -0.0041438782,
+      0.0074395676,
+      0.0069504126,
+      -0.0057642163,
+      -0.0004329511,
+      -0.0290768153,
+      0.0161284803,
+      0.0047544385,
+      0.0079937354,
+      0.0016910464,
+      0.0018310199,
+      0.0003154009,
+      0.0023264042,
+      -0.0016697332,
+      0.0036191126,
+      0.0055568083,
+      -0.0130453972,
+      0.0006099653,
+      -0.001548698,
+      -0.0018089125,
+      0.0009729562,
+      0.0042991465,
+      -0.0008227996,
+      0.0020649161,
+      -0.0006223378,
+      0.0037454917,
+      -0.0012647207,
+      0.0025104016,
+      -0.0022136332,
+      -0.0018335211,
+      0.0032215986,
+      -0.0005116004,
+      -0.0033568575,
+      0.0002304819,
+      -0.001297531,
+      -0.0019752356,
+      0.0002734311,
+      0.0006598268,
+      -0.0021571915
+    ],
+    "intercept": -2.9259829025,
+    "threshold": 0.5
+  },
+  "recommendation_catalog": {
+    "program planning/implementation": {
+      "competency_name": "Program Planning/Implementation",
+      "competency_category": "Functional",
+      "required_level": 3.73,
+      "training_title": "Applied Program Planning/Implementation Workshop"
+    },
+    "governance and decision-making": {
+      "competency_name": "Governance and Decision-Making",
+      "competency_category": "Functional - Executive",
+      "required_level": 4.0,
+      "training_title": "Applied Governance and Decision-Making Workshop"
+    },
+    "conflict resolution": {
+      "competency_name": "Conflict Resolution",
+      "competency_category": "Core - Ethical/Professional",
+      "required_level": 3.43,
+      "training_title": "Workplace Mediation Skills"
+    },
+    "resource management": {
+      "competency_name": "Resource Management",
+      "competency_category": "Core - Organizational",
+      "required_level": 3.71,
+      "training_title": "Applied Resource Management Workshop"
+    },
+    "critical thinking": {
+      "competency_name": "Critical Thinking",
+      "competency_category": "Core - Problem Solving",
+      "required_level": 3.7,
+      "training_title": "Critical Thinking for Decision Making"
+    },
+    "stakeholder coordination": {
+      "competency_name": "Stakeholder Coordination",
+      "competency_category": "Functional",
+      "required_level": 3.83,
+      "training_title": "Advanced Stakeholder Coordination Development Program"
+    },
+    "professionalism": {
+      "competency_name": "Professionalism",
+      "competency_category": "Core - Ethical/Professional",
+      "required_level": 3.85,
+      "training_title": "Applied Professionalism Workshop"
+    },
+    "document control": {
+      "competency_name": "Document Control",
+      "competency_category": "Functional - Administration",
+      "required_level": 3.5,
+      "training_title": "Document Control Fundamentals"
+    },
+    "reporting and compliance": {
+      "competency_name": "Reporting and compliance",
+      "competency_category": "Functional",
+      "required_level": 3.67,
+      "training_title": "Applied Reporting and compliance Workshop"
+    },
+    "multitasking": {
+      "competency_name": "Multitasking",
+      "competency_category": "Core - Organizational",
+      "required_level": 3.81,
+      "training_title": "Advanced Multitasking Development Program"
+    },
+    "human resource support": {
+      "competency_name": "Human Resource Support",
+      "competency_category": "Functional",
+      "required_level": 3.67,
+      "training_title": "Applied Human Resource Support Workshop"
+    },
+    "artificial insemination": {
+      "competency_name": "Artificial Insemination",
+      "competency_category": "Functional",
+      "required_level": 3.6,
+      "training_title": "Applied Artificial Insemination Workshop"
+    },
+    "public service leadership": {
+      "competency_name": "Public Service Leadership",
+      "competency_category": "Functional - Executive",
+      "required_level": 4.0,
+      "training_title": "Applied Public Service Leadership Workshop"
+    },
+    "executive coordination": {
+      "competency_name": "Executive Coordination",
+      "competency_category": "Functional - Executive",
+      "required_level": 4.0,
+      "training_title": "Executive Coordination Fundamentals"
+    },
+    "policy analysis": {
+      "competency_name": "Policy Analysis",
+      "competency_category": "Functional - Executive",
+      "required_level": 3.88,
+      "training_title": "Policy Analysis Fundamentals"
+    },
+    "client relationship management": {
+      "competency_name": "Client Relationship Management",
+      "competency_category": "Core - Client-Focused",
+      "required_level": 3.62,
+      "training_title": "Client Relationship Management Fundamentals"
+    },
+    "motivation and coaching": {
+      "competency_name": "Motivation and Coaching",
+      "competency_category": "Core - Organizational",
+      "required_level": 3.73,
+      "training_title": "Applied Motivation and Coaching Workshop"
+    },
+    "office administration": {
+      "competency_name": "Office Administration",
+      "competency_category": "Functional - Administration",
+      "required_level": 3.25,
+      "training_title": "Applied Office Administration Workshop"
+    },
+    "public speaking": {
+      "competency_name": "Public Speaking",
+      "competency_category": "Core - Communication",
+      "required_level": 3.71,
+      "training_title": "Public Speaking and Facilitation"
+    },
+    "communication coordination": {
+      "competency_name": "Communication Coordination",
+      "competency_category": "Functional",
+      "required_level": 3.6,
+      "training_title": "Advanced Communication Coordination Development Program"
+    },
+    "creative thinking": {
+      "competency_name": "Creative Thinking",
+      "competency_category": "Core - Problem Solving",
+      "required_level": 3.87,
+      "training_title": "Advanced Creative Thinking Development Program"
+    },
+    "analytical thinking": {
+      "competency_name": "Analytical Thinking",
+      "competency_category": "Core - Problem Solving",
+      "required_level": 3.88,
+      "training_title": "Analytical Thinking Fundamentals"
+    },
+    "delegation": {
+      "competency_name": "Delegation",
+      "competency_category": "Core - Ethical/Professional",
+      "required_level": 3.57,
+      "training_title": "Delegation and Task Management"
+    },
+    "relationship building": {
+      "competency_name": "Relationship Building",
+      "competency_category": "Core - Interpersonal",
+      "required_level": 3.73,
+      "training_title": "Relationship Building Fundamentals"
+    },
+    "integrity and honesty": {
+      "competency_name": "Integrity and Honesty",
+      "competency_category": "Core - Ethical/Professional",
+      "required_level": 3.68,
+      "training_title": "Code of Conduct Refresher"
+    },
+    "adherence to legal and regulatory requirements": {
+      "competency_name": "Adherence to legal and regulatory requirements",
+      "competency_category": "Core - Ethical/Professional",
+      "required_level": 3.72,
+      "training_title": "Applied Adherence to legal and regulatory requirements Workshop"
+    },
+    "supervision and leadership": {
+      "competency_name": "Supervision and Leadership",
+      "competency_category": "Functional",
+      "required_level": 3.75,
+      "training_title": "Supervision and Leadership Fundamentals"
+    },
+    "stress management": {
+      "competency_name": "Stress Management",
+      "competency_category": "Core - Adaptability",
+      "required_level": 3.56,
+      "training_title": "Applied Stress Management Workshop"
+    },
+    "innovation": {
+      "competency_name": "Innovation",
+      "competency_category": "Core - Problem Solving",
+      "required_level": 3.78,
+      "training_title": "Applied Innovation Workshop"
+    },
+    "resilience": {
+      "competency_name": "Resilience",
+      "competency_category": "Core - Adaptability",
+      "required_level": 3.61,
+      "training_title": "Advanced Resilience Development Program"
+    },
+    "negotiation skills": {
+      "competency_name": "Negotiation Skills",
+      "competency_category": "Core - Communication",
+      "required_level": 3.74,
+      "training_title": "Negotiation Skills Fundamentals"
+    },
+    "project planning and scheduling": {
+      "competency_name": "Project Planning and Scheduling",
+      "competency_category": "Core - Organizational",
+      "required_level": 3.71,
+      "training_title": "Applied Project Planning and Scheduling Workshop"
+    },
+    "flexibility": {
+      "competency_name": "Flexibility",
+      "competency_category": "Core - Adaptability",
+      "required_level": 3.69,
+      "training_title": "Applied Flexibility Workshop"
+    },
+    "behavioral management": {
+      "competency_name": "Behavioral Management",
+      "competency_category": "Core - Interpersonal",
+      "required_level": 3.64,
+      "training_title": "Behavioral Management Fundamentals"
+    },
+    "strategic planning": {
+      "competency_name": "Strategic Planning",
+      "competency_category": "Core - Organizational",
+      "required_level": 3.79,
+      "training_title": "Advanced Strategic Planning Development Program"
+    },
+    "active listening": {
+      "competency_name": "Active Listening",
+      "competency_category": "Core - Communication",
+      "required_level": 3.62,
+      "training_title": "Applied Active Listening Workshop"
+    },
+    "protective security operations": {
+      "competency_name": "Protective Security Operations",
+      "competency_category": "Functional - Security",
+      "required_level": 3.62,
+      "training_title": "Applied Protective Security Operations Workshop"
+    },
+    "administrative management": {
+      "competency_name": "Administrative Management",
+      "competency_category": "Functional",
+      "required_level": 3.75,
+      "training_title": "Applied Administrative Management Workshop"
+    },
+    "computer literacy": {
+      "competency_name": "Computer Literacy",
+      "competency_category": "Functional",
+      "required_level": 3.44,
+      "training_title": "Applied Computer Literacy Workshop"
+    },
+    "motivation": {
+      "competency_name": "Motivation",
+      "competency_category": "Core - Ethical/Professional",
+      "required_level": 3.62,
+      "training_title": "Advanced Motivation Development Program"
+    },
+    "compliance & risk awareness": {
+      "competency_name": "Compliance & Risk Awareness",
+      "competency_category": "Core - Organizational",
+      "required_level": 3.83,
+      "training_title": "Compliance & Risk Awareness Fundamentals"
+    },
+    "inmate welfare and case management": {
+      "competency_name": "Inmate Welfare and Case Management",
+      "competency_category": "Functional - Corrections",
+      "required_level": 4.0,
+      "training_title": "Applied Inmate Welfare and Case Management Workshop"
+    },
+    "teamwork": {
+      "competency_name": "Teamwork",
+      "competency_category": "Core - Interpersonal",
+      "required_level": 3.66,
+      "training_title": "Teamwork and Collaboration"
+    },
+    "communication skills": {
+      "competency_name": "Communication Skills",
+      "competency_category": "Core - Communication",
+      "required_level": 3.74,
+      "training_title": "Advanced Communication Skills Development Program"
+    },
+    "correctional facility security": {
+      "competency_name": "Correctional Facility Security",
+      "competency_category": "Functional - Corrections",
+      "required_level": 3.0,
+      "training_title": "Applied Correctional Facility Security Workshop"
+    },
+    "jail records management": {
+      "competency_name": "Jail Records Management",
+      "competency_category": "Functional - Corrections",
+      "required_level": 4.0,
+      "training_title": "Applied Jail Records Management Workshop"
+    },
+    "time management": {
+      "competency_name": "Time Management",
+      "competency_category": "Core - Organizational",
+      "required_level": 3.64,
+      "training_title": "Applied Time Management Workshop"
+    },
+    "security/monitoring": {
+      "competency_name": "Security/Monitoring",
+      "competency_category": "Functional - Security",
+      "required_level": 3.46,
+      "training_title": "Applied Security/Monitoring Workshop"
+    },
+    "technical writing": {
+      "competency_name": "Technical Writing",
+      "competency_category": "Core - Communication",
+      "required_level": 3.88,
+      "training_title": "Technical Writing for Government Reports"
+    },
+    "custodial operations": {
+      "competency_name": "Custodial Operations",
+      "competency_category": "Functional - Corrections",
+      "required_level": 4.0,
+      "training_title": "Custodial Operations Fundamentals"
+    },
+    "troubleshooting": {
+      "competency_name": "Troubleshooting",
+      "competency_category": "Core - Problem Solving",
+      "required_level": 3.71,
+      "training_title": "Advanced Troubleshooting Development Program"
+    },
+    "emergency response": {
+      "competency_name": "Emergency Response",
+      "competency_category": "Functional - Emergency Management",
+      "required_level": 3.43,
+      "training_title": "Applied Emergency Response Workshop"
+    },
+    "government correspondence": {
+      "competency_name": "Government Correspondence",
+      "competency_category": "Functional - Administration",
+      "required_level": 4.0,
+      "training_title": "Applied Government Correspondence Workshop"
+    },
+    "record keeping": {
+      "competency_name": "Record keeping",
+      "competency_category": "Functional",
+      "required_level": 3.5,
+      "training_title": "Advanced Record keeping Development Program"
+    },
+    "access control operations": {
+      "competency_name": "Access Control Operations",
+      "competency_category": "Functional - Security",
+      "required_level": 3.5,
+      "training_title": "Advanced Access Control Operations Development Program"
+    },
+    "presentation skills": {
+      "competency_name": "Presentation Skills",
+      "competency_category": "Core - Communication",
+      "required_level": 3.57,
+      "training_title": "Advanced Presentation Skills Development Program"
+    },
+    "security risk assessment": {
+      "competency_name": "Security Risk Assessment",
+      "competency_category": "Functional - Security",
+      "required_level": 3.62,
+      "training_title": "Applied Security Risk Assessment Workshop"
+    },
+    "incident reporting": {
+      "competency_name": "Incident Reporting",
+      "competency_category": "Functional - Security",
+      "required_level": 4.0,
+      "training_title": "Applied Incident Reporting Workshop"
+    },
+    "technical user support": {
+      "competency_name": "Technical User Support",
+      "competency_category": "Functional - Ict",
+      "required_level": 4.0,
+      "training_title": "Technical User Support Fundamentals"
+    },
+    "cybersecurity operations": {
+      "competency_name": "Cybersecurity Operations",
+      "competency_category": "Functional - Ict",
+      "required_level": 4.0,
+      "training_title": "Cybersecurity Awareness and Operations"
+    },
+    "database management": {
+      "competency_name": "Database Management",
+      "competency_category": "Functional - Ict",
+      "required_level": 4.0,
+      "training_title": "Database Management Fundamentals"
+    },
+    "systems analysis": {
+      "competency_name": "Systems Analysis",
+      "competency_category": "Functional - Ict",
+      "required_level": 4.0,
+      "training_title": "Advanced Systems Analysis Development Program"
+    },
+    "hazard and risk assessment": {
+      "competency_name": "Hazard and Risk Assessment",
+      "competency_category": "Functional - Disaster",
+      "required_level": 3.83,
+      "training_title": "Applied Hazard and Risk Assessment Workshop"
+    },
+    "emergency operations center management": {
+      "competency_name": "Emergency Operations Center Management",
+      "competency_category": "Functional - Disaster",
+      "required_level": 3.75,
+      "training_title": "Applied Emergency Operations Center Management Workshop"
+    },
+    "early warning systems": {
+      "competency_name": "Early Warning Systems",
+      "competency_category": "Functional - Disaster",
+      "required_level": 3.83,
+      "training_title": "Applied Early Warning Systems Workshop"
+    },
+    "incident command system": {
+      "competency_name": "Incident Command System",
+      "competency_category": "Functional - Disaster",
+      "required_level": 3.88,
+      "training_title": "Emergency Operations Coordination"
+    },
+    "disaster logistics": {
+      "competency_name": "Disaster Logistics",
+      "competency_category": "Functional - Disaster",
+      "required_level": 3.33,
+      "training_title": "Applied Disaster Logistics Workshop"
+    },
+    "facility maintenance support": {
+      "competency_name": "Facility Maintenance Support",
+      "competency_category": "Functional",
+      "required_level": 3.7,
+      "training_title": "Advanced Facility Maintenance Support Development Program"
+    },
+    "property and asset management": {
+      "competency_name": "Property and Asset Management",
+      "competency_category": "Functional - General Services",
+      "required_level": 4.0,
+      "training_title": "Property and Asset Management Fundamentals"
+    },
+    "parliamentary procedure": {
+      "competency_name": "Parliamentary Procedure",
+      "competency_category": "Functional - Legislative",
+      "required_level": 3.67,
+      "training_title": "Parliamentary Procedure Fundamentals"
+    },
+    "facilities maintenance": {
+      "competency_name": "Facilities Maintenance",
+      "competency_category": "Functional - General Services",
+      "required_level": 4.0,
+      "training_title": "Advanced Facilities Maintenance Development Program"
+    },
+    "stock control/monitoring": {
+      "competency_name": "Stock control/monitoring",
+      "competency_category": "Functional",
+      "required_level": 3.67,
+      "training_title": "Advanced Stock control/monitoring Development Program"
+    },
+    "research and advisory services": {
+      "competency_name": "Research and Advisory Services",
+      "competency_category": "Functional",
+      "required_level": 3.0,
+      "training_title": "Applied Research and Advisory Services Workshop"
+    },
+    "committee secretariat": {
+      "competency_name": "Committee Secretariat",
+      "competency_category": "Functional - Legislative",
+      "required_level": 3.75,
+      "training_title": "Advanced Committee Secretariat Development Program"
+    },
+    "regulatory enforcement": {
+      "competency_name": "Regulatory Enforcement",
+      "competency_category": "Functional",
+      "required_level": 3.38,
+      "training_title": "Applied Regulatory Enforcement Workshop"
+    },
+    "occupational safety": {
+      "competency_name": "Occupational Safety",
+      "competency_category": "Functional - General Services",
+      "required_level": 3.0,
+      "training_title": "Occupational Safety Fundamentals"
+    },
+    "advisory and extension services": {
+      "competency_name": "Advisory and Extension Services",
+      "competency_category": "Functional",
+      "required_level": 4.0,
+      "training_title": "Advanced Advisory and Extension Services Development Program"
+    },
+    "resource and input management": {
+      "competency_name": "Resource and Input Management",
+      "competency_category": "Functional",
+      "required_level": 3.57,
+      "training_title": "Advanced Resource and Input Management Development Program"
+    },
+    "procurement support": {
+      "competency_name": "Procurement Support",
+      "competency_category": "Functional",
+      "required_level": 4.0,
+      "training_title": "Advanced Procurement Support Development Program"
+    },
+    "procurement planning": {
+      "competency_name": "Procurement Planning",
+      "competency_category": "Functional - Procurement",
+      "required_level": 4.0,
+      "training_title": "Annual Procurement Planning"
+    },
+    "bidding and evaluation support": {
+      "competency_name": "Bidding and Evaluation Support",
+      "competency_category": "Functional - Procurement",
+      "required_level": 4.0,
+      "training_title": "Bidding and Evaluation Support Fundamentals"
+    },
+    "surgery and medical procedures": {
+      "competency_name": "Surgery and Medical Procedures",
+      "competency_category": "Functional",
+      "required_level": 3.8,
+      "training_title": "Applied Surgery and Medical Procedures Workshop"
+    },
+    "government procurement compliance": {
+      "competency_name": "Government Procurement Compliance",
+      "competency_category": "Functional - Procurement",
+      "required_level": 4.0,
+      "training_title": "Advanced Government Procurement Compliance Development Program"
+    },
+    "data analysis and visualization": {
+      "competency_name": "Data Analysis and Visualization",
+      "competency_category": "Functional - Planning",
+      "required_level": 4.0,
+      "training_title": "Data Analysis and Visualization Fundamentals"
+    },
+    "ordinance and resolution drafting": {
+      "competency_name": "Ordinance and Resolution Drafting",
+      "competency_category": "Functional - Legislative",
+      "required_level": 4.0,
+      "training_title": "Ordinance and Resolution Drafting Fundamentals"
+    },
+    "legislative research": {
+      "competency_name": "Legislative Research",
+      "competency_category": "Functional - Legislative",
+      "required_level": 4.0,
+      "training_title": "Applied Legislative Research Workshop"
+    },
+    "pest/disease control": {
+      "competency_name": "Pest/Disease Control",
+      "competency_category": "Functional",
+      "required_level": 3.25,
+      "training_title": "Advanced Pest/Disease Control Development Program"
+    },
+    "regulatory compliance": {
+      "competency_name": "Regulatory Compliance",
+      "competency_category": "Functional",
+      "required_level": 3.0,
+      "training_title": "Applied Regulatory Compliance Workshop"
+    },
+    "records management": {
+      "competency_name": "Records Management",
+      "competency_category": "Functional",
+      "required_level": 4.0,
+      "training_title": "Digital Records and Document Control"
+    },
+    "workforce planning": {
+      "competency_name": "Workforce Planning",
+      "competency_category": "Functional - Hr",
+      "required_level": 3.0,
+      "training_title": "Applied Workforce Planning Workshop"
+    },
+    "learning and development management": {
+      "competency_name": "Learning and Development Management",
+      "competency_category": "Functional - Hr",
+      "required_level": 4.0,
+      "training_title": "Applied Learning and Development Management Workshop"
+    },
+    "local development planning": {
+      "competency_name": "Local Development Planning",
+      "competency_category": "Functional - Planning",
+      "required_level": 4.0,
+      "training_title": "Results-Based Development Planning"
+    },
+    "project monitoring and evaluation": {
+      "competency_name": "Project Monitoring and Evaluation",
+      "competency_category": "Functional - Planning",
+      "required_level": 4.0,
+      "training_title": "Advanced Project Monitoring and Evaluation Development Program"
+    },
+    "csc policy compliance": {
+      "competency_name": "CSC Policy Compliance",
+      "competency_category": "Functional",
+      "required_level": 4.0,
+      "training_title": "Advanced CSC Policy Compliance Development Program"
+    },
+    "investment programming": {
+      "competency_name": "Investment Programming",
+      "competency_category": "Functional - Planning",
+      "required_level": 4.0,
+      "training_title": "Applied Investment Programming Workshop"
+    },
+    "waste management": {
+      "competency_name": "Waste management",
+      "competency_category": "Functional",
+      "required_level": 3.67,
+      "training_title": "Waste management Fundamentals"
+    },
+    "disease prevention and control": {
+      "competency_name": "Disease Prevention and Control",
+      "competency_category": "Functional",
+      "required_level": 3.5,
+      "training_title": "Advanced Disease Prevention and Control Development Program"
+    },
+    "hygiene and sanitation compliance": {
+      "competency_name": "Hygiene and Sanitation Compliance",
+      "competency_category": "Functional",
+      "required_level": 3.56,
+      "training_title": "Hygiene and Sanitation Compliance Fundamentals"
+    },
+    "inventory management": {
+      "competency_name": "Inventory Management",
+      "competency_category": "Functional",
+      "required_level": 3.4,
+      "training_title": "Applied Inventory Management Workshop"
+    },
+    "supply and inventory management": {
+      "competency_name": "Supply and Inventory Management",
+      "competency_category": "Functional - General Services",
+      "required_level": 4.0,
+      "training_title": "Supply and Inventory Management Fundamentals"
+    },
+    "storage and safekeeping": {
+      "competency_name": "Storage and safekeeping",
+      "competency_category": "Functional",
+      "required_level": 3.5,
+      "training_title": "Advanced Storage and safekeeping Development Program"
+    },
+    "budget preparation": {
+      "competency_name": "Budget Preparation",
+      "competency_category": "Functional - Budget",
+      "required_level": 3.4,
+      "training_title": "Budget Planning and Analysis"
+    },
+    "budget accountability reporting": {
+      "competency_name": "Budget Accountability Reporting",
+      "competency_category": "Functional - Budget",
+      "required_level": 3.67,
+      "training_title": "Advanced Budget Accountability Reporting Development Program"
+    },
+    "allotment control": {
+      "competency_name": "Allotment Control",
+      "competency_category": "Functional - Budget",
+      "required_level": 3.5,
+      "training_title": "Applied Allotment Control Workshop"
+    },
+    "expenditure programming": {
+      "competency_name": "Expenditure Programming",
+      "competency_category": "Functional - Budget",
+      "required_level": 3.5,
+      "training_title": "Advanced Expenditure Programming Development Program"
+    },
+    "financial statement preparation": {
+      "competency_name": "Financial Statement Preparation",
+      "competency_category": "Functional - Accounting",
+      "required_level": 3.67,
+      "training_title": "Applied Financial Statement Preparation Workshop"
+    },
+    "government accounting": {
+      "competency_name": "Government Accounting",
+      "competency_category": "Functional - Accounting",
+      "required_level": 3.0,
+      "training_title": "Government Accounting and Reporting"
+    },
+    "claims review and verification": {
+      "competency_name": "Claims Review and Verification",
+      "competency_category": "Functional - Accounting",
+      "required_level": 3.5,
+      "training_title": "Claims Review and Verification Fundamentals"
+    },
+    "financial control procedures": {
+      "competency_name": "Financial Control Procedures",
+      "competency_category": "Functional - Accounting",
+      "required_level": 4.0,
+      "training_title": "Advanced Financial Control Procedures Development Program"
+    },
+    "treasury operations": {
+      "competency_name": "Treasury Operations",
+      "competency_category": "Functional - Treasury",
+      "required_level": 4.0,
+      "training_title": "Applied Treasury Operations Workshop"
+    },
+    "revenue forecasting": {
+      "competency_name": "Revenue Forecasting",
+      "competency_category": "Functional - Treasury",
+      "required_level": 3.5,
+      "training_title": "Applied Revenue Forecasting Workshop"
+    },
+    "revenue collection management": {
+      "competency_name": "Revenue Collection Management",
+      "competency_category": "Functional - Treasury",
+      "required_level": 4.0,
+      "training_title": "Revenue Collection Management Fundamentals"
+    },
+    "property valuation": {
+      "competency_name": "Property Valuation",
+      "competency_category": "Functional - Assessment",
+      "required_level": 4.0,
+      "training_title": "Property Valuation Fundamentals"
+    },
+    "tax mapping": {
+      "competency_name": "Tax Mapping",
+      "competency_category": "Functional - Assessment",
+      "required_level": 4.0,
+      "training_title": "Advanced Tax Mapping Development Program"
+    },
+    "photo and video documentation": {
+      "competency_name": "Photo and Video Documentation",
+      "competency_category": "Functional - Communications",
+      "required_level": 4.0,
+      "training_title": "Photo and Video Documentation Fundamentals"
+    },
+    "digital content production": {
+      "competency_name": "Digital Content Production",
+      "competency_category": "Functional - Communications",
+      "required_level": 3.67,
+      "training_title": "Digital Content Production Fundamentals"
+    },
+    "news and feature writing": {
+      "competency_name": "News and Feature Writing",
+      "competency_category": "Functional - Communications",
+      "required_level": 4.0,
+      "training_title": "Advanced News and Feature Writing Development Program"
+    },
+    "crisis communication": {
+      "competency_name": "Crisis Communication",
+      "competency_category": "Functional - Communications",
+      "required_level": 4.0,
+      "training_title": "Applied Crisis Communication Workshop"
+    },
+    "media relations": {
+      "competency_name": "Media Relations",
+      "competency_category": "Functional - Communications",
+      "required_level": 4.0,
+      "training_title": "Media Relations Fundamentals"
+    },
+    "contract review": {
+      "competency_name": "Contract Review",
+      "competency_category": "Functional - Legal",
+      "required_level": 4.0,
+      "training_title": "Applied Contract Review Workshop"
+    },
+    "policy and ordinance review": {
+      "competency_name": "Policy and Ordinance Review",
+      "competency_category": "Functional - Legal",
+      "required_level": 4.0,
+      "training_title": "Applied Policy and Ordinance Review Workshop"
+    },
+    "case management": {
+      "competency_name": "Case Management",
+      "competency_category": "Functional - Legal",
+      "required_level": 4.0,
+      "training_title": "Applied Case Management Workshop"
+    },
+    "risk-based internal auditing": {
+      "competency_name": "Risk-Based Internal Auditing",
+      "competency_category": "Functional - Audit",
+      "required_level": 3.75,
+      "training_title": "Risk-Based Internal Auditing"
+    },
+    "audit evidence and documentation": {
+      "competency_name": "Audit Evidence and Documentation",
+      "competency_category": "Functional - Audit",
+      "required_level": 4.0,
+      "training_title": "Audit Evidence and Documentation Fundamentals"
+    },
+    "audit report writing": {
+      "competency_name": "Audit Report Writing",
+      "competency_category": "Functional - Audit",
+      "required_level": 3.0,
+      "training_title": "Audit Report Writing Fundamentals"
+    },
+    "internal control assessment": {
+      "competency_name": "Internal Control Assessment",
+      "competency_category": "Functional - Audit",
+      "required_level": 3.0,
+      "training_title": "Advanced Internal Control Assessment Development Program"
+    },
+    "community health coordination": {
+      "competency_name": "Community Health Coordination",
+      "competency_category": "Functional - Health",
+      "required_level": 4.0,
+      "training_title": "Community Health Coordination Fundamentals"
+    },
+    "disease surveillance": {
+      "competency_name": "Disease Surveillance",
+      "competency_category": "Functional - Health",
+      "required_level": 4.0,
+      "training_title": "Advanced Disease Surveillance Development Program"
+    },
+    "health promotion": {
+      "competency_name": "Health Promotion",
+      "competency_category": "Functional - Health",
+      "required_level": 4.0,
+      "training_title": "Health Promotion Fundamentals"
+    },
+    "public health/food safety": {
+      "competency_name": "Public Health/Food Safety",
+      "competency_category": "Functional",
+      "required_level": 3.71,
+      "training_title": "Public Health/Food Safety Fundamentals"
+    },
+    "health data reporting": {
+      "competency_name": "Health Data Reporting",
+      "competency_category": "Functional - Health",
+      "required_level": 4.0,
+      "training_title": "Applied Health Data Reporting Workshop"
+    },
+    "equipment and tool handling": {
+      "competency_name": "Equipment and Tool Handling",
+      "competency_category": "Functional",
+      "required_level": 3.4,
+      "training_title": "Applied Equipment and Tool Handling Workshop"
+    },
+    "clinical documentation": {
+      "competency_name": "Clinical Documentation",
+      "competency_category": "Functional - Hospital",
+      "required_level": 4.0,
+      "training_title": "Advanced Clinical Documentation Development Program"
+    },
+    "emergency patient care": {
+      "competency_name": "Emergency Patient Care",
+      "competency_category": "Functional - Hospital",
+      "required_level": 3.4,
+      "training_title": "Advanced Emergency Patient Care Development Program"
+    },
+    "hospital quality management": {
+      "competency_name": "Hospital Quality Management",
+      "competency_category": "Functional - Hospital",
+      "required_level": 3.83,
+      "training_title": "Advanced Hospital Quality Management Development Program"
+    },
+    "patient safety": {
+      "competency_name": "Patient Safety",
+      "competency_category": "Functional - Hospital",
+      "required_level": 3.57,
+      "training_title": "Clinical Risk Management"
+    },
+    "infection prevention and control": {
+      "competency_name": "Infection Prevention and Control",
+      "competency_category": "Functional - Hospital",
+      "required_level": 3.67,
+      "training_title": "Infection Prevention and Control"
+    },
+    "cleaning skill": {
+      "competency_name": "Cleaning Skill",
+      "competency_category": "Functional",
+      "required_level": 3.75,
+      "training_title": "Applied Cleaning Skill Workshop"
+    },
+    "animal health support": {
+      "competency_name": "Animal Health Support",
+      "competency_category": "Functional",
+      "required_level": 3.33,
+      "training_title": "Advanced Animal Health Support Development Program"
+    },
+    "farm operations management": {
+      "competency_name": "Farm Operations Management",
+      "competency_category": "Functional",
+      "required_level": 4.0,
+      "training_title": "Applied Farm Operations Management Workshop"
+    },
+    "farmer advisory services": {
+      "competency_name": "Farmer Advisory Services",
+      "competency_category": "Functional",
+      "required_level": 3.33,
+      "training_title": "Farmer Advisory Services Fundamentals"
+    },
+    "animal and crop production": {
+      "competency_name": "Animal and Crop Production",
+      "competency_category": "Functional",
+      "required_level": 3.0,
+      "training_title": "Advanced Animal and Crop Production Development Program"
+    },
+    "animal breeding and reproduction": {
+      "competency_name": "Animal Breeding and Reproduction",
+      "competency_category": "Functional",
+      "required_level": 3.5,
+      "training_title": "Applied Animal Breeding and Reproduction Workshop"
+    },
+    "feed and nutrition management": {
+      "competency_name": "Feed and Nutrition Management",
+      "competency_category": "Functional",
+      "required_level": 3.67,
+      "training_title": "Feed Formulation Workshop"
+    },
+    "veterinary public health management": {
+      "competency_name": "Veterinary Public Health Management",
+      "competency_category": "Functional",
+      "required_level": 3.0,
+      "training_title": "Veterinary Public Health Management Fundamentals"
+    },
+    "animal disease control": {
+      "competency_name": "Animal Disease Control",
+      "competency_category": "Functional",
+      "required_level": 3.0,
+      "training_title": "Animal Disease Control Fundamentals"
+    },
+    "reproductive monitoring": {
+      "competency_name": "Reproductive Monitoring",
+      "competency_category": "Functional",
+      "required_level": 3.0,
+      "training_title": "Reproductive Monitoring Fundamentals"
+    },
+    "cooperative development": {
+      "competency_name": "Cooperative Development",
+      "competency_category": "Functional - Cooperative",
+      "required_level": 4.0,
+      "training_title": "Advanced Cooperative Development Development Program"
+    },
+    "enterprise development support": {
+      "competency_name": "Enterprise Development Support",
+      "competency_category": "Functional - Cooperative",
+      "required_level": 4.0,
+      "training_title": "Advanced Enterprise Development Support Development Program"
+    },
+    "member education and training": {
+      "competency_name": "Member Education and Training",
+      "competency_category": "Functional - Cooperative",
+      "required_level": 4.0,
+      "training_title": "Member Education and Training Fundamentals"
+    },
+    "cooperative governance": {
+      "competency_name": "Cooperative Governance",
+      "competency_category": "Functional - Cooperative",
+      "required_level": 4.0,
+      "training_title": "Advanced Cooperative Governance Development Program"
+    },
+    "financial literacy facilitation": {
+      "competency_name": "Financial Literacy Facilitation",
+      "competency_category": "Functional - Cooperative",
+      "required_level": 4.0,
+      "training_title": "Financial Literacy Facilitation Fundamentals"
+    }
+  }
+}

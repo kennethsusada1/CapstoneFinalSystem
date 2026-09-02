@@ -1,4 +1,4 @@
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 
 export default function UnderDevelopmentPage({ title, description, icon = 'bi bi-tools', message = 'This section is coming soon.' }) {
     return (

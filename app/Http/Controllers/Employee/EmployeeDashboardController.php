@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
-use App\Services\StaticLnaAnalyticsService;
+use App\Services\LnaAnalyticsService;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -20,7 +20,7 @@ class EmployeeDashboardController extends Controller
      */
     protected function recommendationProfile(LearningNeedsAnalysis $entry): array
     {
-        return app(StaticLnaAnalyticsService::class)->recommendation($entry);
+        return app(LnaAnalyticsService::class)->recommendation($entry);
     }
 
     /**
@@ -72,7 +72,11 @@ class EmployeeDashboardController extends Controller
         $user = $request->user();
         $startDate = now()->subMonths(5)->startOfMonth();
         $period = CarbonPeriod::create($startDate, '1 month', now()->startOfMonth());
-        $lnaEntries = LearningNeedsAnalysis::query()->where('user_id', $user->id)->latest()->get();
+        $lnaEntries = LearningNeedsAnalysis::query()
+            ->where('user_id', $user->id)
+            ->with('recommendations')
+            ->latest()
+            ->get();
 
         $trainings = TrainingApplication::query()
             ->where('user_id', $user->id)

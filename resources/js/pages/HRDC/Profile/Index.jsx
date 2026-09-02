@@ -1,5 +1,5 @@
 import { useForm, usePage } from '@inertiajs/react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { HrdcStyles, PageHero, Panel } from '../Shared';
 
 export default function Index({ profile }) {

@@ -1,4 +1,4 @@
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { AdminStyles, EmptyState, PageHero, Panel, StatCard, StatusPill } from '../Shared';
 
 const pretty = (key) => key.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());

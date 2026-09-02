@@ -1,4 +1,4 @@
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { AdminStyles, EmptyState, PageHero, Panel, StatCard } from './Shared';
 
 function Trend({ data = [] }) {

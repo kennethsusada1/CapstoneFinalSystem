@@ -5,12 +5,13 @@ use App\Http\Middleware\EnsureEmployeeAccess;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RedirectNonTraineeToPms;
 use App\Http\Middleware\VerifyLndApiToken;
-use Spatie\Permission\Middleware\RoleMiddleware;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Spatie\Permission\Middleware\RoleMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('lna:train')
+            ->dailyAt('02:00')
+            ->withoutOverlapping(30);
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
         $middleware->alias([

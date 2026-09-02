@@ -1,4 +1,4 @@
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmployeeStyles, PageHero, Panel, StatCard, StatusPill } from '../Shared';
 
 export default function Show({ training }) {

@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { Initials, PageHero, Panel, StatusPill, SupervisorStyles } from '../Shared';
 
 export default function Show({ nomination }) {

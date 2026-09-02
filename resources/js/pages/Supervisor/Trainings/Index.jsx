@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmptyState, PageHero, Panel, StatCard, StatusPill, SupervisorStyles } from '../Shared';
 
 const toneFor = (status) => status === 'completed' ? 'success' : status === 'ongoing' ? 'warning' : 'info';

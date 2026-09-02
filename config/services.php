@@ -54,4 +54,21 @@ return [
         'timeout'        => env('PMS_TIMEOUT', 20),
     ],
 
+    'lna' => [
+        'model_path' => env('LNA_MODEL_PATH', resource_path('models/lna_logistic_model.json')),
+        'threshold' => (float) env('LNA_MODEL_THRESHOLD', 0.5),
+        'auto_training' => [
+            'enabled' => env('LNA_AUTO_TRAINING_ENABLED', true),
+            'min_rows' => (int) env('LNA_AUTO_TRAINING_MIN_ROWS', 100),
+            'min_positive_rows' => (int) env('LNA_AUTO_TRAINING_MIN_POSITIVE_ROWS', 20),
+            'min_negative_rows' => (int) env('LNA_AUTO_TRAINING_MIN_NEGATIVE_ROWS', 20),
+            'min_years' => (int) env('LNA_AUTO_TRAINING_MIN_YEARS', 2),
+            'min_validation_rows' => (int) env('LNA_AUTO_TRAINING_MIN_VALIDATION_ROWS', 30),
+            'min_validation_roc_auc' => (float) env('LNA_AUTO_TRAINING_MIN_VALIDATION_ROC_AUC', 0.70),
+            'python_binary' => env('LNA_PYTHON_BIN', 'python'),
+            'trainer_script' => env('LNA_TRAINER_SCRIPT', 'scripts/train_lna_model.py'),
+            'timeout' => (int) env('LNA_AUTO_TRAINING_TIMEOUT', 600),
+        ],
+    ],
+
 ];

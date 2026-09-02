@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import AppLayout from '@/Layouts/AppLayout';
+import AppLayout from '@/layouts/AppLayout';
 import { EmptyState, Initials, PageHero, Panel, StatCard, StatusPill, SupervisorStyles } from './Shared';
 
 function TrainingDonut({ data }) {
