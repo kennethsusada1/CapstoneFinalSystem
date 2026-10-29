@@ -144,8 +144,8 @@ test('supervisor can review an lna assessment from their office', function () {
         ])
         ->supervisor_signature->toBe($supervisor->name)
         ->supervisor_signed_on->toDateString()->toBe('2026-08-13')
-        ->predictive_skills_gap->toBe('Communication Skills, Technical Writing')
-        ->prescriptive_training_recommendation->toBe('Technical Writing and Presentation Skills Training')
+        ->prescriptive_skills_gap->toBe('Communication Skills, Technical Writing')
+        ->predictive_training_recommendation->toBe('Technical Writing and Presentation Skills Training')
         ->analytics_generated_at->not->toBeNull();
 });
 
@@ -171,7 +171,7 @@ test('supervisor can review an lna assessment outside their office', function ()
     expect($entry->fresh()->status)->toBe('reviewed');
 });
 
-test('supervisor dashboard exposes predictive gaps and prescriptive training rankings', function () {
+test('supervisor dashboard exposes prescriptive gaps and predictive training rankings', function () {
     $supervisor = makeLnaUser('supervisor', 'SUP-103', 'Operations');
     $employee = makeLnaUser('employee', 'EMP-103', 'Operations');
     $entry = LearningNeedsAnalysis::query()->create([
@@ -179,8 +179,8 @@ test('supervisor dashboard exposes predictive gaps and prescriptive training ran
         'employee_id' => $employee->employee_id,
         'focus_area' => 'Technical writing',
         'competency_gap' => 'Needs stronger report writing',
-        'predictive_skills_gap' => 'Technical Writing',
-        'prescriptive_training_recommendation' => 'Technical Writing and Presentation Skills Training',
+        'prescriptive_skills_gap' => 'Technical Writing',
+        'predictive_training_recommendation' => 'Technical Writing and Presentation Skills Training',
         'training_needed' => true,
         'training_need_probability' => .82,
         'analytics_model_version' => 'test-model',
@@ -208,7 +208,7 @@ test('supervisor dashboard exposes predictive gaps and prescriptive training ran
             ->component('Supervisor/Dashboard')
             ->where('teamAnalytics.reviewed_count', 1)
             ->where('teamAnalytics.training_needed_count', 1)
-            ->where('teamAnalytics.watchlist.0.predictive_skills_gap', 'Technical Writing')
+            ->where('teamAnalytics.watchlist.0.prescriptive_skills_gap', 'Technical Writing')
             ->where('teamAnalytics.top_recommendations.0.training_title', 'Technical Writing and Presentation Skills Training')
         );
 });

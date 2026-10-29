@@ -59,7 +59,7 @@ test('the exported logistic model generates ranked lna recommendations', functio
         ->and($analytics['recommendations'][0]['probability'])->toBeGreaterThanOrEqual($analytics['recommendations'][min(1, count($analytics['recommendations']) - 1)]['probability']);
 });
 
-test('the employee dashboard exposes reviewed predictive and prescriptive analytics', function () {
+test('the employee dashboard exposes reviewed prescriptive and predictive analytics', function () {
     $user = User::factory()->create([
         'employee_id' => 'EMP-AI-002',
     ]);
@@ -73,8 +73,8 @@ test('the employee dashboard exposes reviewed predictive and prescriptive analyt
         'priority_level' => 'high',
         'status' => 'reviewed',
         'analytics_generated_at' => now(),
-        'predictive_skills_gap' => 'Technical Writing',
-        'prescriptive_training_recommendation' => 'Technical Writing Workshop',
+        'prescriptive_skills_gap' => 'Technical Writing',
+        'predictive_training_recommendation' => 'Technical Writing Workshop',
         'training_needed' => true,
         'training_need_probability' => 0.84,
         'analytics_model_version' => 'lna-logistic-v1',
@@ -97,8 +97,8 @@ test('the employee dashboard exposes reviewed predictive and prescriptive analyt
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Employee/Dashboard')
-            ->where('recommendations.0.predictive_skills_gap', 'Technical Writing')
-            ->where('recommendations.0.prescriptive_training_recommendation', 'Technical Writing Workshop')
+            ->where('recommendations.0.prescriptive_skills_gap', 'Technical Writing')
+            ->where('recommendations.0.predictive_training_recommendation', 'Technical Writing Workshop')
             ->where('recommendations.0.confidence_score', 0.84)
             ->where('recommendations.0.model_version', 'lna-logistic-v1')
             ->where('recommendations.0.ranked_recommendations.0.training_title', 'Technical Writing Workshop')

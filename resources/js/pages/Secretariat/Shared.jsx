@@ -44,8 +44,8 @@ export function StatCard({ label, value, icon, color = '#f59e0b' }) {
     return <div className="sec-stat" style={{ ...panelStyle, '--stat-color': color }}><div className="sec-stat-icon"><i className={`bi ${icon}`} /></div><div><span>{label}</span><strong>{value}</strong></div></div>;
 }
 
-export function Panel({ title, subtitle, action, children }) {
-    return <section className="sec-panel" style={panelStyle}>{(title || action) && <div className="sec-panel-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>}{children}</section>;
+export function Panel({ id, title, subtitle, action, children }) {
+    return <section id={id} className="sec-panel" style={panelStyle}>{(title || action) && <div className="sec-panel-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>}{children}</section>;
 }
 
 export function StatusPill({ children, tone = 'warning' }) {

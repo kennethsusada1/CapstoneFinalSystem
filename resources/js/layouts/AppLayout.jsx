@@ -49,6 +49,20 @@ export default function AppLayout({ children, title, description }) {
 
     useEffect(() => {
         fetchNotifications();
+
+        const refreshWhenVisible = () => {
+            if (document.visibilityState === 'visible') fetchNotifications();
+        };
+        const interval = window.setInterval(refreshWhenVisible, 30_000);
+
+        window.addEventListener('focus', refreshWhenVisible);
+        document.addEventListener('visibilitychange', refreshWhenVisible);
+
+        return () => {
+            window.clearInterval(interval);
+            window.removeEventListener('focus', refreshWhenVisible);
+            document.removeEventListener('visibilitychange', refreshWhenVisible);
+        };
     }, [fetchNotifications]);
 
     const sidebarWidth = collapsed ? 68 : 280;

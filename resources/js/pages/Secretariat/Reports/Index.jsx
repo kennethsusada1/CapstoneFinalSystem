@@ -8,7 +8,7 @@ export default function Index({ summary, activities, offices }) {
                 <PageHero
                     kicker="TERMINAL REPORTING DESK"
                     title="Turn activity records into accountable results."
-                    description="Generate terminal training activity summaries, review participation and completion, and use the same evidence as input to the next Learning and Development Plan."
+                    description="Generate terminal training activity summaries and review participation and completion across offices."
                     href="/secretariat/reports/export"
                     action="Download PDF report"
                     icon="bi-file-earmark-pdf"
@@ -80,6 +80,7 @@ export default function Index({ summary, activities, offices }) {
                         </div>
                     </div>
                 </Panel>
+
             </div>
             <SecretariatStyles />
         </AppLayout>
