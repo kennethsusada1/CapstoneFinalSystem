@@ -22,7 +22,9 @@ class DatabaseSeeder extends Seeder
             Role::findOrCreate($role, 'web');
         }
 
-        if (! app()->environment(['local', 'testing'])) {
+        $demoMode = filter_var(env('LNA_DEMO_MODE', false), FILTER_VALIDATE_BOOLEAN);
+
+        if (! app()->environment(['local', 'testing']) && ! $demoMode) {
             return;
         }
 
