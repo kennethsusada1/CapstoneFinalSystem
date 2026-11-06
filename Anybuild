@@ -25,6 +25,9 @@ laravel_serve(
     build_pre = [
         copy("composer.json", "/app/composer.json"),
         copy("composer.lock", "/app/composer.lock"),
+        copy("package.json", "/app/package.json"),
+        copy("pnpm-workspace.yaml", "/app/pnpm-workspace.yaml"),
+        copy(".npmrc", "/app/.npmrc"),
     ],
     build_post = [run("rm -rf node_modules", group = "build")],
 )
