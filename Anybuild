@@ -22,5 +22,9 @@ laravel_serve(
     config,
     build,
     name = "capstoneproject2026-test",
+    build_pre = [
+        copy("composer.json"),
+        copy("composer.lock"),
+    ],
     build_post = [run("rm -rf node_modules", group = "build")],
 )
