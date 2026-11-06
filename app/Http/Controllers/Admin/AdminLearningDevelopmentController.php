@@ -56,7 +56,7 @@ class AdminLearningDevelopmentController extends Controller
                 ->map(fn (LearningNeedsAnalysis $item) => [
                     'id' => $item->id,
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->user?->name ?? 'Unknown',
+                    'employee_name' => $item->user->name,
                     'focus_area' => $item->focus_area,
                     'priority_level' => $item->priority_level,
                     'status' => $item->status,
@@ -70,7 +70,7 @@ class AdminLearningDevelopmentController extends Controller
                 ->map(fn (TrainingApplication $item) => [
                     'id' => $item->id,
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->user?->name ?? 'Unknown',
+                    'employee_name' => $item->user->name,
                     'training_title' => $item->training_title,
                     'training_type' => $item->training_type,
                     'progress_percent' => $item->progress_percent,
@@ -85,7 +85,7 @@ class AdminLearningDevelopmentController extends Controller
                 ->map(fn (LearningActionPlan $item) => [
                     'id' => $item->id,
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->user?->name ?? 'Unknown',
+                    'employee_name' => $item->user->name,
                     'training_title' => $item->training_title,
                     'status' => $item->status,
                     'submitted_on' => $item->submitted_on?->toDateString(),

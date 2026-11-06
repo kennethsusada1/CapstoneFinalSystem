@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\HubController;
 use App\Http\Controllers\Api\PmsIntakeController;
+use App\Http\Middleware\RecordAuditLog;
 use App\Http\Middleware\VerifyLndApiToken;
 use Illuminate\Support\Facades\Route;
 
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Route;
 // Inbound: smart-pms → L&D
 // Authenticated by LND_API_TOKEN (L&D owns this token; PMS sends it)
 // -----------------------------------------------------------------------
-Route::middleware(VerifyLndApiToken::class)
+Route::middleware([VerifyLndApiToken::class, RecordAuditLog::class])
     ->group(function (): void {
         // POST /api/lnd/development-plans
         // Receives employee IDP + IPCR data from PMS, creates a TrainingReferral.

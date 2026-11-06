@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
+use App\Models\TrainingProgram;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
@@ -26,10 +27,10 @@ class SupervisorPortalController extends Controller
         $lapEntries = LearningActionPlan::query()->whereIn('user_id', $teamIds)->with('user')->latest()->get();
         $analyticsEntries = $lnaEntries->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
             && $entry->analytics_generated_at !== null
-            && $entry->predictive_skills_gap !== null
-            && $entry->prescriptive_training_recommendation !== null);
+            && $entry->predictive_skills_gap !== null);
+        $scoredAnalyticsEntries = $analyticsEntries->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->training_need_probability !== null);
         $analyticsWatchlist = $analyticsEntries
-            ->sortByDesc(fn (LearningNeedsAnalysis $entry): float => (float) $entry->training_need_probability)
+            ->sortByDesc(fn (LearningNeedsAnalysis $entry): float => (float) ($entry->training_need_probability ?? -1))
             ->map(function (LearningNeedsAnalysis $entry): array {
                 return [
                     'lna_id' => $entry->id,
@@ -38,8 +39,8 @@ class SupervisorPortalController extends Controller
                     'focus_area' => $entry->focus_area,
                     'predictive_skills_gap' => $entry->predictive_skills_gap,
                     'prescriptive_training_recommendation' => $entry->prescriptive_training_recommendation,
-                    'training_needed' => (bool) $entry->training_needed,
-                    'training_need_probability' => (float) $entry->training_need_probability,
+                    'training_needed' => $entry->training_needed,
+                    'training_need_probability' => $entry->training_need_probability === null ? null : (float) $entry->training_need_probability,
                     'analytics_model_version' => $entry->analytics_model_version,
                 ];
             })->values();
@@ -106,7 +107,9 @@ class SupervisorPortalController extends Controller
                 'reviewed_count' => $analyticsEntries->count(),
                 'members_with_signal' => $analyticsEntries->pluck('user_id')->unique()->count(),
                 'training_needed_count' => $analyticsEntries->where('training_needed', true)->count(),
-                'average_probability' => round((float) ($analyticsEntries->avg(fn (LearningNeedsAnalysis $entry): float => (float) $entry->training_need_probability) ?? 0), 4),
+                'average_probability' => $scoredAnalyticsEntries->isEmpty()
+                    ? null
+                    : round((float) $scoredAnalyticsEntries->avg(fn (LearningNeedsAnalysis $entry): float => (float) $entry->training_need_probability), 4),
                 'watchlist' => $analyticsWatchlist->take(6)->values(),
                 'top_recommendations' => $trainingRankings,
             ],
@@ -170,28 +173,6 @@ class SupervisorPortalController extends Controller
                     'development_readiness' => $readiness,
                 ];
             })->values(),
-        ]);
-    }
-
-    public function nominations(Request $request): Response
-    {
-        $supervisor = $this->supervisor($request);
-
-        return Inertia::render('Supervisor/Nominations/Index', [
-            'nominations' => $this->nominationRecords($this->team($supervisor)),
-            'programs' => $this->trainingCatalog(),
-        ]);
-    }
-
-    public function nominationShow(Request $request, int $id): Response
-    {
-        $supervisor = $this->supervisor($request);
-        $nomination = collect($this->nominationRecords($this->team($supervisor)))->firstWhere('id', $id);
-
-        abort_unless($nomination !== null, 404);
-
-        return Inertia::render('Supervisor/Nominations/Show', [
-            'nomination' => $nomination,
         ]);
     }
 
@@ -309,7 +290,24 @@ class SupervisorPortalController extends Controller
      */
     private function team(User $supervisor): EloquentCollection
     {
+        $supervisorEmployeeId = trim((string) $supervisor->employee_id);
+        $hasSingleSupervisorFallback = User::role('supervisor')->count() === 1;
+
+        if ($supervisorEmployeeId === '') {
+            return User::query()->whereRaw('1 = 0')->get();
+        }
+
         return User::role('employee')
+            ->whereHas('employeeRecord', function ($query) use ($supervisorEmployeeId, $hasSingleSupervisorFallback): void {
+                $query->where(function ($assignmentQuery) use ($supervisorEmployeeId, $hasSingleSupervisorFallback): void {
+                    $assignmentQuery->where('supervisor_employee_id', $supervisorEmployeeId);
+
+                    if ($hasSingleSupervisorFallback) {
+                        $assignmentQuery->orWhereNull('supervisor_employee_id')
+                            ->orWhere('supervisor_employee_id', '');
+                    }
+                });
+            })
             ->with('employeeRecord')
             ->get()
             ->values();
@@ -342,50 +340,21 @@ class SupervisorPortalController extends Controller
      */
     private function trainingCatalog(): array
     {
-        return [
-            ['id' => 1, 'title' => 'Supervisory Development Program', 'category' => 'Leadership', 'schedule' => 'August 18-20, 2026', 'slots' => 24, 'provider' => 'HRDC Learning Unit', 'mode' => 'Face-to-face'],
-            ['id' => 2, 'title' => 'Digital Productivity and Data Management', 'category' => 'Digital Skills', 'schedule' => 'September 8-9, 2026', 'slots' => 30, 'provider' => 'CSC ICT Academy', 'mode' => 'Hybrid'],
-            ['id' => 3, 'title' => 'Technical Writing and Presentation Skills', 'category' => 'Communication', 'schedule' => 'October 6-7, 2026', 'slots' => 25, 'provider' => 'HRDC and Secretariat', 'mode' => 'Face-to-face'],
-            ['id' => 4, 'title' => 'Project Planning and Monitoring Workshop', 'category' => 'Project Management', 'schedule' => 'November 12-14, 2026', 'slots' => 20, 'provider' => 'Accredited Training Partner', 'mode' => 'Hybrid'],
-        ];
-    }
-
-    /**
-     * @param  EloquentCollection<int, User>  $team
-     * @return list<array<string, int|string>>
-     */
-    private function nominationRecords(EloquentCollection $team): array
-    {
-        $programs = $this->trainingCatalog();
-
-        $records = collect($programs)->map(function (array $program, int $index) use ($team) {
-            $employeeName = 'Team member to be assigned';
-            $employeeId = 'TBA';
-            $position = 'Team position';
-
-            if ($team->isNotEmpty()) {
-                $employee = $team->get($index % $team->count());
-                $employeeName = $employee->name;
-                $employeeId = $employee->employee_id ?? 'TBA';
-                $position = $employee->employeeRecord()->value('position') ?: 'Team position';
-            }
-
-            return [
-                'id' => $program['id'],
-                'employee_name' => $employeeName,
-                'employee_id' => $employeeId,
-                'position' => $position,
-                'training_title' => $program['title'],
-                'category' => $program['category'],
-                'schedule' => $program['schedule'],
-                'provider' => $program['provider'],
-                'mode' => $program['mode'],
-                'status' => ['draft', 'for endorsement', 'endorsed', 'for endorsement'][$index],
-                'justification' => 'The nomination supports the employee development priorities identified through team capability review and current work assignments.',
-                'expected_output' => 'Apply the acquired competency to a workplace improvement output and share learning with the team.',
-            ];
-        })->values()->all();
-
-        return array_values($records);
+        return array_values(TrainingProgram::query()
+            ->openForEnrollment()
+            ->withCount(['applications as claimed_slots' => fn ($query) => $query->whereNotIn('status', ['rejected'])])
+            ->orderBy('start_date')
+            ->get()
+            ->filter(fn (TrainingProgram $program): bool => $program->claimed_slots < $program->slots)
+            ->map(fn (TrainingProgram $program): array => [
+                'id' => $program->id,
+                'title' => $program->title,
+                'category' => $program->category,
+                'schedule' => $program->start_date?->format('M j, Y').($program->end_date && $program->end_date->ne($program->start_date) ? ' - '.$program->end_date->format('M j, Y') : ''),
+                'slots' => max(0, $program->slots - $program->claimed_slots),
+                'provider' => $program->provider ?? 'Provider to be confirmed',
+                'mode' => $program->delivery_mode,
+            ])
+            ->all());
     }
 }

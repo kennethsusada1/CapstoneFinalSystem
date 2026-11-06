@@ -13,10 +13,13 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property int|null $learning_needs_analysis_id
  * @property int|null $training_referral_id
+ * @property int|null $training_program_id
  * @property string|null $employee_id
  * @property string $training_title
  * @property string $training_type
+ * @property string|null $delivery_mode
  * @property string|null $provider
+ * @property string|null $venue
  * @property string|null $office
  * @property Carbon|null $start_date
  * @property Carbon|null $end_date
@@ -28,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $processed_at
  * @property bool $is_attended
  * @property Carbon|null $completed_on
+ * @property-read int $total Aggregate alias returned by grouped report queries.
  * @property-read User $user
  * @property-read LearningNeedsAnalysis|null $learningNeedsAnalysis
  * @property-read LearningDevelopmentPlan|null $learningDevelopmentPlan
@@ -37,10 +41,13 @@ use Illuminate\Support\Carbon;
     'user_id',
     'learning_needs_analysis_id',
     'training_referral_id',
+    'training_program_id',
     'employee_id',
     'training_title',
     'training_type',
+    'delivery_mode',
     'provider',
+    'venue',
     'office',
     'start_date',
     'end_date',
@@ -96,5 +103,13 @@ class TrainingApplication extends Model
     public function trainingReferral(): BelongsTo
     {
         return $this->belongsTo(TrainingReferral::class);
+    }
+
+    /**
+     * @return BelongsTo<TrainingProgram, $this>
+     */
+    public function trainingProgram(): BelongsTo
+    {
+        return $this->belongsTo(TrainingProgram::class);
     }
 }

@@ -8,7 +8,6 @@ use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
 use App\Models\User;
-use Carbon\CarbonPeriod;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,23 +15,24 @@ class AdminDashboardController extends Controller
 {
     public function __invoke(): Response
     {
-        $startDate = now()->subDays(6)->startOfDay();
-        $period = CarbonPeriod::create($startDate, '1 day', now()->startOfDay());
+        $today = now()->startOfDay();
+        $startDate = $today->copy()->subDays(6);
+        $period = collect(range(0, 6))->map(fn (int $day) => $startDate->copy()->addDays($day));
 
         $employeeImports = EmployeeRecord::query()
             ->where('created_at', '>=', $startDate)
             ->get()
-            ->groupBy(fn (EmployeeRecord $record) => $record->created_at?->format('Y-m-d'));
+            ->groupBy(fn (EmployeeRecord $record) => $record->created_at?->format('Y-m-d') ?: 'unknown');
 
         $accountCreations = User::query()
             ->where('created_at', '>=', $startDate)
             ->get()
-            ->groupBy(fn (User $user) => $user->created_at?->format('Y-m-d'));
+            ->groupBy(fn (User $user) => $user->created_at?->format('Y-m-d') ?: 'unknown');
 
         $trainingActivity = TrainingApplication::query()
             ->where('created_at', '>=', $startDate)
             ->get()
-            ->groupBy(fn (TrainingApplication $item) => $item->created_at?->format('Y-m-d'));
+            ->groupBy(fn (TrainingApplication $item) => $item->created_at?->format('Y-m-d') ?: 'unknown');
 
         return Inertia::render('Admin/Dashboard', [
             'stats' => [

@@ -174,21 +174,21 @@ function ReviewForm({ entry, supervisorName }) {
 
 function SupervisorAnalytics({ entry }) {
     const recommendations = entry.recommendations ?? [];
-    const modelVersion = entry.analytics_model_version || 'Static fallback';
+    const modelVersion = entry.analytics_model_version || 'rule-based-ratings-v1';
 
     return (
-        <section className="lna-analytics-panel" aria-label="AI analytics summary">
+        <section className="lna-analytics-panel" aria-label="LNA analytics summary">
             <div className="lna-analytics-header">
                 <div className="lna-analytics-title">
                     <i className="bi bi-stars" />
-                    <span>AI-ASSISTED ANALYTICS</span>
+                    <span>LNA ANALYTICS</span>
                 </div>
                 <div className="lna-analytics-model"><i className="bi bi-cpu" />{modelVersion}</div>
             </div>
 
             <div className="lna-analytics-table">
                 <div className="lna-analytics-table-head"><span>Ranked competency gap</span><span>Recommended training</span><span>Probability</span></div>
-                {recommendations.length === 0 && <div className="lna-analytics-empty">No ranked recommendations were generated.</div>}
+                {recommendations.length === 0 && <div className="lna-analytics-empty">{entry.training_needed === false ? 'No immediate training need was identified from the reviewed ratings.' : entry.training_needed === true ? 'A training need was identified, but there are not enough validated model records to rank a program.' : 'There are not enough valid ratings to determine a training need.'}</div>}
                 {recommendations.map((recommendation) => {
                     const score = Number(recommendation.probability);
                     const scorePercentage = Number.isFinite(score) ? score * 100 : null;

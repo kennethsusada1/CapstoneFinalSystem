@@ -35,7 +35,7 @@ function PredictiveSignal({ recommendation }) {
         <div className="emp-signal-copy">
             <StatusPill tone={recommendation.training_needed ? 'warning' : 'success'}>{recommendation.training_needed ? 'Training indicated' : 'No immediate need'}</StatusPill>
             <div><span>Identified skills gap</span><strong>{recommendation.predictive_skills_gap || 'Not available'}</strong></div>
-            <div><span>Model status</span><strong>{recommendation.model_version || 'Static fallback'}</strong></div>
+            <div><span>Analytics status</span><strong>{recommendation.model_version || 'rule-based-ratings-v1'}</strong></div>
         </div>
     </div>;
 }
@@ -90,7 +90,7 @@ export default function Dashboard({ stats, progressCards, charts, recentTraining
                         </div>
                         <div className="emp-muted" style={{ marginTop: '.55rem' }}>IDENTIFIED SKILLS GAP</div>
                         <div className="emp-copy" style={{ marginTop: '.3rem' }}>{item.predictive_skills_gap}</div>
-                        <div className="emp-muted" style={{ marginTop: '.45rem' }}>{item.model_version || 'Static fallback'}</div>
+                        <div className="emp-muted" style={{ marginTop: '.45rem' }}>{item.model_version || 'rule-based-ratings-v1'}</div>
                     </div>)}
                 </div>
             </Panel>

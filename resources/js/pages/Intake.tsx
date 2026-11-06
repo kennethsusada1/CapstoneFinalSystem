@@ -161,11 +161,27 @@ function InfoRow({
 
 function ratingColor(rating: string): string {
     const r = rating.toLowerCase();
-    if (r === 'outstanding')       return '#10b981';
-    if (r === 'very satisfactory') return '#3b82f6';
-    if (r === 'satisfactory')      return '#38bdf8';
-    if (r === 'unsatisfactory')    return '#f59e0b';
-    if (r === 'poor')              return '#ef4444';
+
+    if (r === 'outstanding')       {
+return '#10b981';
+}
+
+    if (r === 'very satisfactory') {
+return '#3b82f6';
+}
+
+    if (r === 'satisfactory')      {
+return '#38bdf8';
+}
+
+    if (r === 'unsatisfactory')    {
+return '#f59e0b';
+}
+
+    if (r === 'poor')              {
+return '#ef4444';
+}
+
     return 'var(--admin-text-primary)';
 }
 

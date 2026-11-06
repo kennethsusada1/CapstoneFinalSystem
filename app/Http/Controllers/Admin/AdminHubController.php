@@ -22,18 +22,18 @@ class AdminHubController extends Controller
 
         return Inertia::render('Admin/Hub/Index', [
             'pmsConnection' => [
-                'status'       => $connection->status,
+                'status' => $connection->status,
                 'pms_base_url' => $connection->pms_base_url,
                 'requested_at' => $connection->requested_at?->diffForHumans(),
-                'accepted_at'  => $connection->accepted_at?->diffForHumans(),
+                'accepted_at' => $connection->accepted_at?->diffForHumans(),
             ],
             // Credentials the PMS admin needs to configure their side.
             // LND_API_TOKEN is what PMS uses as Bearer when calling us.
             // base_url is our own APP_URL — PMS sets this as LND_BASE_URL.
             'lndCredentials' => [
-                'base_url'   => config('app.url'),
-                'api_token'  => config('services.lnd.api_token'),
-                'hmac_secret'=> config('services.lnd.redirect_hmac_secret'),
+                'base_url' => config('app.url'),
+                'api_token' => config('services.lnd.api_token'),
+                'hmac_secret' => config('services.lnd.redirect_hmac_secret'),
             ],
         ]);
     }
@@ -53,7 +53,7 @@ class AdminHubController extends Controller
         $callbackOk = $this->notifyPms($connection, 'accepted');
 
         $connection->update([
-            'status'      => PmsHubConnection::STATUS_CONNECTED,
+            'status' => PmsHubConnection::STATUS_CONNECTED,
             'accepted_at' => now(),
         ]);
 
@@ -75,7 +75,7 @@ class AdminHubController extends Controller
         $this->notifyPms($connection, 'rejected');
 
         $connection->update([
-            'status'             => PmsHubConnection::STATUS_REJECTED,
+            'status' => PmsHubConnection::STATUS_REJECTED,
             'pms_callback_token' => null,
         ]);
 
@@ -88,11 +88,11 @@ class AdminHubController extends Controller
     public function disconnect(): RedirectResponse
     {
         PmsHubConnection::instance()->update([
-            'status'             => PmsHubConnection::STATUS_DISCONNECTED,
-            'pms_base_url'       => null,
+            'status' => PmsHubConnection::STATUS_DISCONNECTED,
+            'pms_base_url' => null,
             'pms_callback_token' => null,
-            'requested_at'       => null,
-            'accepted_at'        => null,
+            'requested_at' => null,
+            'accepted_at' => null,
         ]);
 
         return back()->with('success', 'Disconnected from PMS.');
@@ -115,7 +115,7 @@ class AdminHubController extends Controller
         try {
             $response = Http::withToken($connection->pms_callback_token)
                 ->timeout(10)
-                ->post(rtrim($connection->pms_base_url, '/') . '/api/hub/connection-accepted', [
+                ->post(rtrim($connection->pms_base_url, '/').'/api/hub/connection-accepted', [
                     'pillar' => 'ld',
                     'status' => $status,
                 ]);
@@ -123,13 +123,13 @@ class AdminHubController extends Controller
             if (! $response->successful()) {
                 Log::warning('AdminHubController: PMS callback returned non-2xx.', [
                     'status' => $response->status(),
-                    'body'   => $response->body(),
+                    'body' => $response->body(),
                 ]);
             }
 
             return $response->successful();
         } catch (\Throwable $e) {
-            Log::error('AdminHubController: failed to notify PMS of ' . $status . '.', [
+            Log::error('AdminHubController: failed to notify PMS of '.$status.'.', [
                 'exception' => $e->getMessage(),
             ]);
 

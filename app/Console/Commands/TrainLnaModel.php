@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\LearningNeedsAnalysis;
 use App\Models\LnaModelTrainingRun;
+use App\Models\TrainingApplication;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\File;
@@ -20,10 +21,10 @@ class TrainLnaModel extends Command
      * @var list<string>
      */
     private const CSV_COLUMNS = [
+        'competency_name',
+        'recommended_training',
         'employee_assessment',
-        'supervisor_assessment',
         'required_level',
-        'skill_gap',
         'ipcr_rating',
         'trainings_last_3_years',
         'years_of_service',
@@ -161,11 +162,22 @@ class TrainLnaModel extends Command
             ->where('status', 'reviewed')
             ->whereNotNull('skill_assessments')
             ->whereNotNull('supervisor_skill_assessments')
-            ->with(['user.employeeRecord'])
-            ->withCount([
-                'trainingApplications as trainings_last_3_years_count' => fn ($query) => $query
-                    ->where('created_at', '>=', now()->subYears(3)),
-            ])
+            ->whereHas('user.employeeRecord', function ($query): void {
+                $query
+                    ->whereRaw('LOWER(TRIM(employment_status)) = ?', ['permanent'])
+                    ->whereNotNull('office')
+                    ->whereNotNull('position')
+                    ->whereNotNull('education_level')
+                    ->whereNotNull('role_family')
+                    ->whereNotNull('seniority_level')
+                    ->whereNotNull('hire_date');
+            })
+            ->where(function ($query): void {
+                $query
+                    ->whereNotNull('ipcr_rating')
+                    ->orWhereHas('user.employeeRecord.performanceRecords', fn ($performance) => $performance->whereNotNull('ipcr_rating'));
+            })
+            ->with(['user.employeeRecord.performanceRecords'])
             ->orderBy('id')
             ->get();
     }
@@ -188,6 +200,32 @@ class TrainLnaModel extends Command
             $year = $entry->submitted_on
                 ? $entry->submitted_on->year
                 : ($entry->created_at ? $entry->created_at->year : now()->year);
+            $asOf = $entry->submitted_on ?? $entry->created_at ?? now();
+            $trainingCount = TrainingApplication::query()
+                ->where('user_id', $entry->user_id)
+                ->where(fn ($query) => $query->where('status', 'completed')->orWhere('is_attended', true))
+                ->where(fn ($query) => $query->whereBetween('completed_on', [
+                    $asOf->copy()->subYears(3)->toDateString(),
+                    $asOf->toDateString(),
+                ])->orWhere(fn ($legacy) => $legacy->whereNull('completed_on')->whereBetween('created_at', [
+                    $asOf->copy()->subYears(3),
+                    $asOf,
+                ])))
+                ->count();
+            $serviceYears = $employeeRecord?->hire_date === null
+                ? null
+                : max(0, $employeeRecord->hire_date->diffInYears($asOf));
+            $performanceRatings = $employeeRecord?->performanceRecords
+                ?->whereBetween('review_year', [$year - 3, $year])
+                ->pluck('ipcr_rating')
+                ->filter(fn ($rating): bool => is_numeric($rating)) ?? collect();
+            $ipcrAverage = $performanceRatings->isNotEmpty()
+                ? round((float) $performanceRatings->avg(), 2)
+                : $this->numeric($entry->ipcr_rating);
+
+            if ($serviceYears === null || $ipcrAverage === null) {
+                continue;
+            }
 
             foreach ($supervisorRatings as $skill => $supervisorRating) {
                 $employeeScore = $this->rating($employeeRatings[$skill] ?? null);
@@ -197,23 +235,24 @@ class TrainLnaModel extends Command
                     continue;
                 }
 
-                $metadata = $catalog[strtolower(trim((string) $skill))] ?? [];
+                $metadata = array_merge(
+                    $this->defaultRecommendation((string) $skill),
+                    $catalog[strtolower(trim((string) $skill))] ?? [],
+                );
                 $requiredLevel = (float) ($metadata['required_level'] ?? 3);
-                $skillGap = max(0, $requiredLevel - $supervisorScore);
-
                 $rows[] = [
+                    'competency_name' => (string) $skill,
+                    'recommended_training' => (string) ($metadata['training_title'] ?? 'Functional Competency Enhancement Training'),
                     'employee_assessment' => $employeeScore,
-                    'supervisor_assessment' => $supervisorScore,
                     'required_level' => $requiredLevel,
-                    'skill_gap' => $skillGap,
-                    'ipcr_rating' => $this->numeric($entry->ipcr_rating),
-                    'trainings_last_3_years' => (int) ($entry->trainings_last_3_years_count ?? 0),
-                    'years_of_service' => null,
-                    'seniority_level' => $this->inferSeniority($position),
-                    'role_family' => $this->inferRoleFamily($position),
-                    'education_level' => '',
+                    'ipcr_rating' => $ipcrAverage,
+                    'trainings_last_3_years' => $trainingCount,
+                    'years_of_service' => $serviceYears,
+                    'seniority_level' => $employeeRecord->seniority_level ?? $this->inferSeniority($position),
+                    'role_family' => $employeeRecord?->role_family ?: $this->inferRoleFamily($position),
+                    'education_level' => (string) ($employeeRecord->education_level ?? ''),
                     'employment_status' => (string) $employmentStatus,
-                    'competency_category' => (string) ($metadata['competency_category'] ?? 'Database-derived competency'),
+                    'competency_category' => (string) ($metadata['competency_category'] ?? 'Core Functional Capability'),
                     'year' => $year,
                     // Supervisor ratings are the initial human-reviewed label:
                     // 1-2 means training needed, 3-4 means no immediate need.
@@ -300,6 +339,16 @@ class TrainLnaModel extends Command
             throw new \RuntimeException('The generated artifact is missing its model schema or version.');
         }
 
+        if (($artifact['dataset']['synthetic'] ?? true) !== false
+            || ! in_array($artifact['dataset']['source'] ?? null, ['database', 'validated'], true)) {
+            throw new \RuntimeException('Synthetic training data cannot be promoted to the active LNA model.');
+        }
+
+        $featureNames = $artifact['feature_schema']['feature_names'] ?? [];
+        if (array_intersect(['supervisor_assessment', 'skill_gap'], $featureNames) !== []) {
+            throw new \RuntimeException('The model contains supervisor-derived target leakage features.');
+        }
+
         if ($validationRows < $minimumRows || $rocAuc === null || $rocAuc < $minimumRocAuc) {
             throw new \RuntimeException(sprintf(
                 'Validation quality did not meet the promotion gate (rows: %d, ROC-AUC: %s, required: %d rows and %.2f ROC-AUC).',
@@ -365,10 +414,60 @@ class TrainLnaModel extends Command
         try {
             $artifact = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
 
+            $source = $artifact['dataset']['source'] ?? null;
+            $metrics = $artifact['validation']['metrics'] ?? [];
+            $validationRows = (int) ($metrics['rows'] ?? 0);
+            $rocAuc = is_numeric($metrics['roc_auc'] ?? null) ? (float) $metrics['roc_auc'] : null;
+            $minimumRows = (int) config('services.lna.auto_training.min_validation_rows', 30);
+            $minimumRocAuc = (float) config('services.lna.auto_training.min_validation_roc_auc', 0.70);
+
+            if (($artifact['dataset']['synthetic'] ?? true) !== false
+                || ! in_array($source, ['database', 'validated'], true)
+                || $validationRows < $minimumRows
+                || $rocAuc === null
+                || $rocAuc < $minimumRocAuc) {
+                return [];
+            }
+
             return is_array($artifact['recommendation_catalog'] ?? null) ? $artifact['recommendation_catalog'] : [];
         } catch (Throwable) {
             return [];
         }
+    }
+
+    /**
+     * @return array{competency_category: string, training_title: string}
+     */
+    private function defaultRecommendation(string $competency): array
+    {
+        $competency = strtolower(trim($competency));
+
+        return match (true) {
+            str_contains($competency, 'lead') || str_contains($competency, 'supervis') || str_contains($competency, 'team management') => [
+                'competency_category' => 'Leadership and Supervision',
+                'training_title' => 'Supervisory Development Program',
+            ],
+            str_contains($competency, 'data') || str_contains($competency, 'excel') || str_contains($competency, 'digital') || str_contains($competency, 'system') => [
+                'competency_category' => 'Digital Productivity and Data Management',
+                'training_title' => 'Digital Productivity and Data Management Workshop',
+            ],
+            str_contains($competency, 'commun') || str_contains($competency, 'writing') || str_contains($competency, 'report') || str_contains($competency, 'present') => [
+                'competency_category' => 'Communication and Technical Writing',
+                'training_title' => 'Technical Writing and Presentation Skills Training',
+            ],
+            str_contains($competency, 'customer') || str_contains($competency, 'client') || str_contains($competency, 'service') => [
+                'competency_category' => 'Customer Service Excellence',
+                'training_title' => 'Customer Service Excellence Program',
+            ],
+            str_contains($competency, 'plan') || str_contains($competency, 'project') || str_contains($competency, 'monitor') => [
+                'competency_category' => 'Planning and Project Monitoring',
+                'training_title' => 'Project Planning and Monitoring Workshop',
+            ],
+            default => [
+                'competency_category' => 'Core Functional Capability',
+                'training_title' => 'Functional Competency Enhancement Training',
+            ],
+        };
     }
 
     private function rating(mixed $value): ?float

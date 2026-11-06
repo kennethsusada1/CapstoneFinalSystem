@@ -39,18 +39,19 @@ function PredictiveSignal({ analytics }) {
         return <EmptyState icon="bi-activity" title="Awaiting predictive signals" text="Signals will appear after reviewed LNA assessments." />;
     }
 
-    const score = percentage(analytics.average_probability);
+    const hasScore = analytics.average_probability !== null && analytics.average_probability !== undefined;
+    const score = hasScore ? percentage(analytics.average_probability) : 0;
     const circumference = 2 * Math.PI * 46;
     const dashOffset = circumference - (circumference * score) / 100;
 
     return (
         <div className="sup-analytics-overview">
-            <div className="sup-signal-ring" aria-label={`${score.toFixed(1)} percent average training need probability`}>
+            <div className="sup-signal-ring" aria-label={hasScore ? `${score.toFixed(1)} percent average training need probability` : 'Validated model probability is not available'}>
                 <svg viewBox="0 0 120 120" role="img" aria-hidden="true">
                     <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(148,163,184,.13)" strokeWidth="8" />
                     <circle cx="60" cy="60" r="46" fill="none" stroke="#67e8f9" strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} transform="rotate(-90 60 60)" />
                 </svg>
-                <div className="sup-signal-ring-label"><strong>{score.toFixed(0)}%</strong><span>need signal</span></div>
+                <div className="sup-signal-ring-label"><strong>{hasScore ? `${score.toFixed(0)}%` : 'N/A'}</strong><span>{hasScore ? 'need signal' : 'model score'}</span></div>
             </div>
             <div className="sup-analytics-metrics">
                 <div><span>Reviewed LNAs</span><strong>{analytics.reviewed_count}</strong></div>
@@ -103,12 +104,12 @@ function AnalyticsWatchlist({ entries = [] }) {
                             <Initials name={entry.employee_name} />
                             <div style={{ minWidth: 0 }}><strong className="sup-title">{entry.employee_name}</strong><div className="sup-muted">{entry.employee_id} · {entry.focus_area}</div></div>
                         </div>
-                        <StatusPill tone={entry.training_needed ? 'warning' : 'success'}>{entry.training_needed ? 'Training need' : 'Monitor'}</StatusPill>
+                        <StatusPill tone={entry.training_needed ? 'warning' : entry.training_needed === false ? 'success' : 'info'}>{entry.training_needed ? 'Training need' : entry.training_needed === false ? 'No immediate need' : 'Review data'}</StatusPill>
                     </div>
                     <div className="sup-analytics-watch-grid">
                         <div><span>Predicted skills gap</span><strong>{entry.predictive_skills_gap}</strong></div>
-                        <div><span>Prescribed training</span><strong>{entry.prescriptive_training_recommendation}</strong></div>
-                        <div><span>Probability</span><strong className="sup-analytics-watch-score">{percentage(entry.training_need_probability).toFixed(1)}%</strong></div>
+                        <div><span>Prescribed training</span><strong>{entry.prescriptive_training_recommendation || 'No prescribed training'}</strong></div>
+                        <div><span>Probability</span><strong className="sup-analytics-watch-score">{entry.training_need_probability == null ? 'Unavailable' : `${percentage(entry.training_need_probability).toFixed(1)}%`}</strong></div>
                     </div>
                 </div>
             ))}
@@ -130,7 +131,7 @@ export default function Dashboard({ supervisor, stats, teamProgress, attentionIt
                 </section>
 
                 <section className="sup-grid-2 sup-analytics-grid">
-                    <Panel title="Predictive Skills-Gap Signal" subtitle="Average training-need probability from reviewed team LNAs">
+                    <Panel title="Predictive Skills-Gap Signal" subtitle="Validated logistic model score when available; rule-based gaps otherwise">
                         <PredictiveSignal analytics={teamAnalytics} />
                     </Panel>
                     <Panel title="Prescriptive Training Ranking" subtitle="Most relevant training actions across the team">

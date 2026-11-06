@@ -20,7 +20,7 @@ class IntakeController extends Controller
     public function show(Request $request): Response
     {
         $pmsUserId = $request->query('pms_user_id');
-        $plan      = $request->query('plan');
+        $plan = $request->query('plan');
 
         // Look up the referral — gracefully handle missing/invalid params
         $referral = null;
@@ -33,13 +33,13 @@ class IntakeController extends Controller
         }
 
         return Inertia::render('Intake', [
-            'employeeName'   => $referral?->employee_name,
+            'employeeName' => $referral?->employee_name,
             'employeeOffice' => $referral?->employee_office,
             'officialRating' => $referral?->official_rating,
-            'periodName'     => $referral?->period_name,
-            'plan'           => $plan,
-            'pmsUserId'      => $pmsUserId,
-            'found'          => $referral !== null,
+            'periodName' => $referral?->period_name,
+            'plan' => $plan,
+            'pmsUserId' => $pmsUserId,
+            'found' => $referral !== null,
         ]);
     }
 }

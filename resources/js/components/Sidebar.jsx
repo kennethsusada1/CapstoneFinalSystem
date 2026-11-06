@@ -13,6 +13,7 @@ const linkSets = {
         { href: '/admin', label: 'Dashboard', icon: 'bi-grid-1x2-fill' },
         { href: '/admin/users', label: 'Users', icon: 'bi-people-fill' },
         { href: '/admin/employees', label: 'Employee Records', icon: 'bi-building-fill' },
+        { href: '/admin/audit-logs', label: 'Audit Trail', icon: 'bi-journal-text' },
         { href: '/admin/hub', label: 'HRMO Hub', icon: 'bi-grid-3x3-gap-fill' },
         { href: '/admin/settings', label: 'L&D Reports', icon: 'bi-bar-chart-fill' },
         { href: '/admin/profile', label: 'Profile', icon: 'bi-person-badge-fill' },
@@ -20,10 +21,12 @@ const linkSets = {
     secretariat: [
         { href: '/secretariat', label: 'Dashboard', icon: 'bi-grid-1x2-fill' },
         { href: '/secretariat/applications', label: 'Applications', icon: 'bi-inbox-fill' },
+        { href: '/secretariat/training-programs', label: 'Training Programs', icon: 'bi-calendar2-event' },
         { href: '/secretariat/ld-plans', label: 'L&D Plans', icon: 'bi-journal-richtext' },
         { href: '/secretariat/training-monitor', label: 'Training Monitor', icon: 'bi-activity' },
         { href: '/secretariat/lap-submissions', label: 'LAP Submissions', icon: 'bi-journal-check' },
         { href: '/secretariat/reports', label: 'Terminal Reports', icon: 'bi-file-earmark-bar-graph-fill' },
+        { href: '/secretariat/reports/ld-plans', label: 'L&D Plan Reports', icon: 'bi-journal-text' },
         { href: '/secretariat/profile', label: 'Profile', icon: 'bi-person-badge-fill' },
     ],
     hrdc: [
@@ -37,7 +40,6 @@ const linkSets = {
         { href: '/supervisor', label: 'Dashboard', icon: 'bi-grid-1x2-fill' },
         { href: '/supervisor/team', label: 'My Team', icon: 'bi-people-fill' },
         { href: '/supervisor/lna-reviews', label: 'LNA Reviews', icon: 'bi-clipboard2-check-fill' },
-        { href: '/supervisor/nominations', label: 'Nominations', icon: 'bi-person-plus-fill' },
         { href: '/supervisor/trainings', label: 'Trainings', icon: 'bi-mortarboard-fill' },
         { href: '/supervisor/idp', label: 'Team IDP', icon: 'bi-journal-check' },
         { href: '/supervisor/profile', label: 'Profile', icon: 'bi-person-badge-fill' },

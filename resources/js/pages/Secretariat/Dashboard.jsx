@@ -30,7 +30,7 @@ export default function Dashboard({ stats, recentApplications, recentPlans, prog
                     <Panel title="Employee LAP Intake" subtitle="Recent post-training Learning Action Plans" action={<Link href="/secretariat/lap-submissions" className="sec-button secondary">Receive plans</Link>}>
                         <div className="sec-list">{(recentPlans ?? []).length === 0 && <EmptyState icon="bi-journal" title="No LAP submissions" text="Submitted employee action plans will appear here." />}{(recentPlans ?? []).map((plan) => <div className="sec-item" key={plan.id}><div className="sec-row"><div><div className="sec-title">{plan.employee_name}</div><div className="sec-muted">{plan.training_title}</div></div><StatusPill tone={toneFor(plan.receipt_status)}>{plan.receipt_status}</StatusPill></div></div>)}</div>
                     </Panel>
-                    <Panel title="Planning Calendar" subtitle="Static 2026 program reference">
+                    <Panel title="Published Training Schedule" subtitle="Live programs with available seats">
                         <div className="sec-list">{(programs ?? []).slice(0, 3).map((program) => <div className="sec-item" key={program.id}><div className="sec-row"><StatusPill tone="info">{program.category}</StatusPill><span className="sec-muted">{program.schedule}</span></div><div className="sec-title" style={{ marginTop: '.55rem' }}>{program.title}</div></div>)}</div>
                     </Panel>
                 </section>

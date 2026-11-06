@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,7 +24,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $address
  * @property string $email
  * @property string|null $employee_id
- * @property int|null    $pms_user_id
+ * @property int|null $pms_user_id
  * @property string|null $office
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $activation_sent_at
@@ -39,10 +40,10 @@ use Spatie\Permission\Traits\HasRoles;
  */
 #[Fillable(['name', 'address', 'email', 'employee_id', 'office', 'pms_user_id', 'password', 'activation_sent_at', 'activation_token'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, MustVerifyEmailTrait, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.

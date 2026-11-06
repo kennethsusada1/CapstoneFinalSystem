@@ -17,8 +17,7 @@ class AdminActivationCredentialsMail extends Mailable
         public User $user,
         public string $activationUrl,
         public string $activationToken,
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

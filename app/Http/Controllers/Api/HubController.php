@@ -23,18 +23,18 @@ class HubController extends Controller
     public function connectionRequest(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'pillar'         => ['required', 'string', 'in:pms'],
-            'base_url'       => ['required', 'url', 'max:255'],
+            'pillar' => ['required', 'string', 'in:pms'],
+            'base_url' => ['required', 'url', 'max:255'],
             'callback_token' => ['required', 'string', 'min:8'],
         ]);
 
         $connection = PmsHubConnection::instance();
         $connection->update([
-            'status'             => PmsHubConnection::STATUS_PENDING,
-            'pms_base_url'       => $validated['base_url'],
+            'status' => PmsHubConnection::STATUS_PENDING,
+            'pms_base_url' => $validated['base_url'],
             'pms_callback_token' => $validated['callback_token'],
-            'requested_at'       => now(),
-            'accepted_at'        => null,
+            'requested_at' => now(),
+            'accepted_at' => null,
         ]);
 
         Log::info('HubController: connection request received from PMS.', [
@@ -56,11 +56,11 @@ class HubController extends Controller
     public function disconnect(Request $request): JsonResponse
     {
         PmsHubConnection::instance()->update([
-            'status'             => PmsHubConnection::STATUS_DISCONNECTED,
-            'pms_base_url'       => null,
+            'status' => PmsHubConnection::STATUS_DISCONNECTED,
+            'pms_base_url' => null,
             'pms_callback_token' => null,
-            'requested_at'       => null,
-            'accepted_at'        => null,
+            'requested_at' => null,
+            'accepted_at' => null,
         ]);
 
         Log::info('HubController: disconnect notification received from PMS.');

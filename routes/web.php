@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAuditLogController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminEmployeeController;
 use App\Http\Controllers\Admin\AdminHubController;
@@ -112,8 +113,9 @@ Route::middleware('auth')->prefix('api/notifications')->group(function () {
     Route::post('/read-all', [NotificationController::class, 'markAllRead']);
 });
 
-Route::middleware(['auth', 'role:system-admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'audit', 'role:system-admin'])->prefix('admin')->group(function () {
     Route::get('/', AdminDashboardController::class);
+    Route::get('/audit-logs', [AdminAuditLogController::class, 'index']);
     Route::get('/users', [AdminUserController::class, 'index']);
     Route::post('/users', [AdminUserController::class, 'store']);
     Route::post('/users/manual-employee', [AdminUserController::class, 'storeManualEmployee']);
@@ -123,8 +125,6 @@ Route::middleware(['auth', 'role:system-admin'])->prefix('admin')->group(functio
     Route::get('/employees', [AdminEmployeeController::class, 'index']);
     Route::post('/employees/import', [AdminEmployeeController::class, 'import']);
     Route::patch('/employees/{employeeRecord}', [AdminEmployeeController::class, 'update']);
-    Route::redirect('/offices', '/admin/employees');
-    Route::post('/offices/import', [AdminEmployeeController::class, 'import']);
     Route::get('/settings', AdminLearningDevelopmentController::class);
     Route::get('/settings/export', [AdminReportController::class, 'export']);
     Route::get('/profile', [AdminProfileController::class, 'show']);
@@ -137,26 +137,31 @@ Route::middleware(['auth', 'role:system-admin'])->prefix('admin')->group(functio
     Route::post('/hub/disconnect', [AdminHubController::class, 'disconnect'])->name('admin.hub.disconnect');
 });
 
-Route::middleware(['auth', 'role:secretariat'])->prefix('secretariat')->group(function () {
+Route::middleware(['auth', 'audit', 'role:secretariat'])->prefix('secretariat')->group(function () {
     Route::get('/', [SecretariatPortalController::class, 'dashboard']);
     Route::get('/applications', [SecretariatPortalController::class, 'applications']);
     Route::patch('/applications/{trainingApplication}', [SecretariatPortalController::class, 'processApplication']);
+    Route::get('/training-programs', [SecretariatPortalController::class, 'trainingPrograms']);
+    Route::post('/training-programs', [SecretariatPortalController::class, 'storeTrainingProgram']);
+    Route::patch('/training-programs/{trainingProgram}', [SecretariatPortalController::class, 'updateTrainingProgram']);
     Route::get('/ld-plans', [SecretariatPortalController::class, 'ldPlans']);
     Route::post('/ld-plans', [SecretariatPortalController::class, 'storeLdPlan']);
     Route::get('/training-monitor', [SecretariatPortalController::class, 'trainingMonitor']);
+    Route::patch('/training-monitor/{trainingApplication}', [SecretariatPortalController::class, 'updateTrainingMonitor']);
     Route::get('/lap-submissions', [SecretariatPortalController::class, 'lapSubmissions']);
     Route::patch('/lap-submissions/{learningActionPlan}', [SecretariatPortalController::class, 'processLap']);
     Route::get('/reports', [SecretariatPortalController::class, 'reports']);
     Route::get('/reports/export', [SecretariatPortalController::class, 'exportReport']);
+    Route::get('/reports/ld-plans', [SecretariatPortalController::class, 'ldPlanReports']);
+    Route::get('/reports/ld-plans/export', [SecretariatPortalController::class, 'exportLdPlanReport']);
     Route::get('/profile', [SecretariatPortalController::class, 'profile']);
     Route::patch('/profile', [SecretariatPortalController::class, 'updateProfile']);
-    Route::redirect('/training-programs', '/secretariat/ld-plans');
     Route::redirect('/schedules', '/secretariat/training-monitor');
     Route::redirect('/nominations', '/secretariat/applications');
     Route::redirect('/attendance', '/secretariat/lap-submissions');
 });
 
-Route::middleware(['auth', 'role:hrdc'])->prefix('hrdc')->group(function () {
+Route::middleware(['auth', 'audit', 'role:hrdc'])->prefix('hrdc')->group(function () {
     Route::get('/', [HrdcPortalController::class, 'dashboard']);
     Route::get('/ld-plans', [HrdcPortalController::class, 'plans']);
     Route::get('/ld-plans/{learningDevelopmentPlan}', [HrdcPortalController::class, 'planShow']);
@@ -171,13 +176,11 @@ Route::middleware(['auth', 'role:hrdc'])->prefix('hrdc')->group(function () {
     Route::redirect('/evaluations', '/hrdc/program-approvals');
 });
 
-Route::middleware(['auth', 'role:supervisor'])->prefix('supervisor')->group(function () {
+Route::middleware(['auth', 'audit', 'role:supervisor'])->prefix('supervisor')->group(function () {
     Route::get('/', [SupervisorPortalController::class, 'dashboard']);
     Route::get('/team', [SupervisorPortalController::class, 'teamIndex']);
     Route::get('/lna-reviews', [SupervisorLnaController::class, 'index']);
     Route::patch('/lna-reviews/{learningNeedsAnalysis}', [SupervisorLnaController::class, 'update']);
-    Route::get('/nominations', [SupervisorPortalController::class, 'nominations']);
-    Route::get('/nominations/{id}', [SupervisorPortalController::class, 'nominationShow']);
     Route::get('/trainings', [SupervisorPortalController::class, 'trainings']);
     Route::get('/idp', [SupervisorPortalController::class, 'idpIndex']);
     Route::get('/idp/{learningActionPlan}', [SupervisorPortalController::class, 'idpShow']);
@@ -185,7 +188,7 @@ Route::middleware(['auth', 'role:supervisor'])->prefix('supervisor')->group(func
     Route::patch('/profile', [SupervisorPortalController::class, 'updateProfile']);
 });
 
-Route::middleware(['auth', 'employee.access', 'trainee.only'])->prefix('employee')->group(function () {
+Route::middleware(['auth', 'audit', 'employee.access', 'trainee.only'])->prefix('employee')->group(function () {
     Route::get('/', EmployeeDashboardController::class);
     Route::get('/recommendations', [EmployeeLearningController::class, 'trainings']);
     Route::get('/training-applications', [EmployeeLearningController::class, 'applications']);

@@ -43,31 +43,31 @@ class PmsIntakeController extends Controller
         // 1. Validate the incoming payload
         // -----------------------------------------------------------------
         $validated = $request->validate([
-            'external_plan_id'                => ['required', 'string', 'max:64'],
-            'source_system'                   => ['required', 'string', 'max:32'],
+            'external_plan_id' => ['required', 'string', 'max:64'],
+            'source_system' => ['required', 'string', 'max:32'],
 
-            'period'                          => ['required', 'array'],
-            'period.id'                       => ['required', 'integer'],
-            'period.name'                     => ['required', 'string', 'max:128'],
+            'period' => ['required', 'array'],
+            'period.id' => ['required', 'integer'],
+            'period.name' => ['required', 'string', 'max:128'],
 
-            'employee'                        => ['required', 'array'],
-            'employee.id'                     => ['required', 'integer'],
-            'employee.name'                   => ['required', 'string', 'max:255'],
-            'employee.email'                  => ['required', 'email', 'max:255'],
-            'employee.position'               => ['nullable', 'string', 'max:255'],
-            'employee.office_id'              => ['nullable', 'integer'],
-            'employee.office_name'            => ['nullable', 'string', 'max:255'],
+            'employee' => ['required', 'array'],
+            'employee.id' => ['required', 'integer'],
+            'employee.name' => ['required', 'string', 'max:255'],
+            'employee.email' => ['required', 'email', 'max:255'],
+            'employee.position' => ['nullable', 'string', 'max:255'],
+            'employee.office_id' => ['nullable', 'integer'],
+            'employee.office_name' => ['nullable', 'string', 'max:255'],
 
-            'performance'                     => ['required', 'array'],
-            'performance.official_score'      => ['required', 'numeric', 'min:1', 'max:5'],
-            'performance.official_rating'     => ['required', 'string', 'max:64'],
-            'performance.pmt_adjusted_score'  => ['nullable', 'numeric'],
+            'performance' => ['required', 'array'],
+            'performance.official_score' => ['required', 'numeric', 'min:1', 'max:5'],
+            'performance.official_rating' => ['required', 'string', 'max:64'],
+            'performance.pmt_adjusted_score' => ['nullable', 'numeric'],
             'performance.pmt_adjusted_rating' => ['nullable', 'string', 'max:64'],
-            'performance.released_at'         => ['nullable', 'string'],
+            'performance.released_at' => ['nullable', 'string'],
 
-            'ipcr'                            => ['required', 'array'],
-            'idp_rows'                        => ['required', 'array'],
-            'idp_rows.*.performance_gap'      => ['nullable', 'string'],
+            'ipcr' => ['required', 'array'],
+            'idp_rows' => ['required', 'array'],
+            'idp_rows.*.performance_gap' => ['nullable', 'string'],
             'idp_rows.*.developmental_activity' => ['nullable', 'string'],
         ]);
 
@@ -85,7 +85,7 @@ class PmsIntakeController extends Controller
             ]);
 
             return response()->json([
-                'status'           => 'acknowledged',
+                'status' => 'acknowledged',
                 'lnd_reference_id' => $existing->lnd_reference_id,
             ], 200);
         }
@@ -100,8 +100,8 @@ class PmsIntakeController extends Controller
         // -----------------------------------------------------------------
         try {
             DB::transaction(function () use ($validated, $lndReferenceId): void {
-                $emp    = $validated['employee'];
-                $perf   = $validated['performance'];
+                $emp = $validated['employee'];
+                $perf = $validated['performance'];
                 $period = $validated['period'];
 
                 // 4a. Find or create the L&D user account
@@ -111,9 +111,9 @@ class PmsIntakeController extends Controller
                 LndTrainee::query()->updateOrCreate(
                     ['pms_user_id' => $emp['id']],
                     [
-                        'name'        => $emp['name'],
-                        'email'       => $emp['email'],
-                        'position'    => $emp['position'] ?? null,
+                        'name' => $emp['name'],
+                        'email' => $emp['email'],
+                        'position' => $emp['position'] ?? null,
                         'office_name' => $emp['office_name'] ?? null,
                         'lnd_user_id' => $user->id,     // ← linked immediately on intake
                     ],
@@ -121,22 +121,22 @@ class PmsIntakeController extends Controller
 
                 // 4c. Create the training referral with full JSON snapshots
                 $referral = TrainingReferral::query()->create([
-                    'lnd_reference_id'   => $lndReferenceId,
-                    'external_plan_id'   => $validated['external_plan_id'],
-                    'source_system'      => $validated['source_system'],
-                    'pms_user_id'        => $emp['id'],
-                    'pms_period_id'      => $period['id'],
-                    'period_name'        => $period['name'],
-                    'employee_name'      => $emp['name'],
-                    'employee_email'     => $emp['email'],
-                    'employee_position'  => $emp['position'] ?? null,
+                    'lnd_reference_id' => $lndReferenceId,
+                    'external_plan_id' => $validated['external_plan_id'],
+                    'source_system' => $validated['source_system'],
+                    'pms_user_id' => $emp['id'],
+                    'pms_period_id' => $period['id'],
+                    'period_name' => $period['name'],
+                    'employee_name' => $emp['name'],
+                    'employee_email' => $emp['email'],
+                    'employee_position' => $emp['position'] ?? null,
                     'employee_office_id' => $emp['office_id'] ?? null,
-                    'employee_office'    => $emp['office_name'] ?? null,
-                    'official_score'     => $perf['official_score'],
-                    'official_rating'    => $perf['official_rating'],
-                    'ipcr_snapshot'      => $validated['ipcr'],
-                    'idp_rows'           => $validated['idp_rows'],
-                    'status'             => 'received',
+                    'employee_office' => $emp['office_name'] ?? null,
+                    'official_score' => $perf['official_score'],
+                    'official_rating' => $perf['official_rating'],
+                    'ipcr_snapshot' => $validated['ipcr'],
+                    'idp_rows' => $validated['idp_rows'],
+                    'status' => 'received',
                 ]);
 
                 // 4d. Auto-create one TrainingApplication per IDP row so Carlos
@@ -145,7 +145,7 @@ class PmsIntakeController extends Controller
                 //     processApplication() knows to fire the PMS callback on completion.
                 foreach ($validated['idp_rows'] as $index => $row) {
                     $developmentalActivity = trim((string) ($row['developmental_activity'] ?? ''));
-                    $performanceGap        = trim((string) ($row['performance_gap'] ?? ''));
+                    $performanceGap = trim((string) ($row['performance_gap'] ?? ''));
 
                     // Use developmental_activity as the training title.
                     // Fall back to a descriptive label if the field is empty.
@@ -156,23 +156,23 @@ class PmsIntakeController extends Controller
                             : 'IDP Training — '.$emp['name'].' ('.($index + 1).')');
 
                     TrainingApplication::query()->create([
-                        'user_id'              => $user->id,
-                        'employee_id'          => $user->employee_id,
+                        'user_id' => $user->id,
+                        'employee_id' => $user->employee_id,
                         'training_referral_id' => $referral->id,
-                        'training_title'       => $trainingTitle,
-                        'training_type'        => 'In-house',
-                        'provider'             => 'PMS Referral — IDP Training',
-                        'office'               => $emp['office_name'] ?? $user->office,
-                        'status'               => 'applied',
-                        'progress_percent'     => 0,
-                        'is_attended'          => false,
+                        'training_title' => $trainingTitle,
+                        'training_type' => 'In-house',
+                        'provider' => 'PMS Referral — IDP Training',
+                        'office' => $emp['office_name'] ?? $user->office,
+                        'status' => 'applied',
+                        'progress_percent' => 0,
+                        'is_attended' => false,
                     ]);
                 }
             });
         } catch (Throwable $e) {
             Log::error('PmsIntakeController: failed to persist referral.', [
                 'external_plan_id' => $validated['external_plan_id'],
-                'exception'        => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return response()->json([
@@ -183,11 +183,11 @@ class PmsIntakeController extends Controller
         Log::info('PmsIntakeController: referral created.', [
             'external_plan_id' => $validated['external_plan_id'],
             'lnd_reference_id' => $lndReferenceId,
-            'pms_user_id'      => $validated['employee']['id'],
+            'pms_user_id' => $validated['employee']['id'],
         ]);
 
         return response()->json([
-            'status'           => 'acknowledged',
+            'status' => 'acknowledged',
             'lnd_reference_id' => $lndReferenceId,
         ], 201);
     }
@@ -205,6 +205,8 @@ class PmsIntakeController extends Controller
      * The activation email lets the employee set their own password before their
      * first L&D login. If mail fails we log the error but do NOT abort the intake —
      * Secretariat can resend activation manually from the Admin Users page.
+     *
+     * @param  array<string, mixed>  $emp
      */
     private function provisionUser(array $emp): User
     {
@@ -219,8 +221,8 @@ class PmsIntakeController extends Controller
             }
 
             Log::info('PmsIntakeController: reusing existing user account.', [
-                'user_id'    => $existingUser->id,
-                'email'      => $existingUser->email,
+                'user_id' => $existingUser->id,
+                'email' => $existingUser->email,
                 'pms_user_id' => $emp['id'],
             ]);
 
@@ -232,11 +234,11 @@ class PmsIntakeController extends Controller
 
         /** @var User $newUser */
         $newUser = User::query()->create([
-            'name'             => $emp['name'],
-            'email'            => $emp['email'],
-            'office'           => $emp['office_name'] ?? null,
-            'pms_user_id'      => $emp['id'],
-            'password'         => Hash::make(Str::password(16, true, true, true, false)),
+            'name' => $emp['name'],
+            'email' => $emp['email'],
+            'office' => $emp['office_name'] ?? null,
+            'pms_user_id' => $emp['id'],
+            'password' => Hash::make(Str::password(16, true, true, true, false)),
             'activation_token' => $activationToken,
             'email_verified_at' => null,
             'activation_sent_at' => null,
@@ -250,8 +252,8 @@ class PmsIntakeController extends Controller
         $this->sendActivationEmail($newUser, $activationUrl, $activationToken);
 
         Log::info('PmsIntakeController: new user account created.', [
-            'user_id'    => $newUser->id,
-            'email'      => $newUser->email,
+            'user_id' => $newUser->id,
+            'email' => $newUser->email,
             'pms_user_id' => $emp['id'],
         ]);
 
@@ -273,7 +275,7 @@ class PmsIntakeController extends Controller
             Log::info('PmsIntakeController: activation email sent.', ['email' => $user->email]);
         } catch (Throwable $e) {
             Log::error('PmsIntakeController: activation email failed — Secretariat can resend manually.', [
-                'email'     => $user->email,
+                'email' => $user->email,
                 'exception' => $e->getMessage(),
             ]);
             // Intentionally not re-throwing — intake succeeds even if mail fails.
@@ -291,7 +293,7 @@ class PmsIntakeController extends Controller
     private function generateReferenceId(): string
     {
         $year = now()->year;
-        $seq  = TrainingReferral::query()->count() + 1;
+        $seq = TrainingReferral::query()->count() + 1;
 
         return sprintf('LND-REF-%d-%05d', $year, $seq);
     }

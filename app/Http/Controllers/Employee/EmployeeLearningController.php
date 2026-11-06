@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LearningActionPlan;
 use App\Models\LearningNeedsAnalysis;
 use App\Models\TrainingApplication;
+use App\Models\TrainingProgram;
 use App\Services\LnaAnalyticsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,6 @@ class EmployeeLearningController extends Controller
                 && $entry->predictive_skills_gap !== null
                 && $entry->prescriptive_training_recommendation !== null)
             ->map(fn (LearningNeedsAnalysis $entry) => $this->recommendationProfile($entry))
-            ->unique(fn (array $recommendation) => $recommendation['focus_area'].'|'.$recommendation['prescriptive_training_recommendation'])
             ->values();
     }
 
@@ -50,13 +50,23 @@ class EmployeeLearningController extends Controller
         $notifications = collect();
 
         foreach ($recommendations as $recommendation) {
-            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['prescriptive_training_recommendation']);
+            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->learning_needs_analysis_id === $recommendation['lna_id']);
 
             if (! $matchedTraining) {
                 $notifications->push([
                     'title' => 'Training Recommendation Available',
                     'message' => "You are advised to undergo {$recommendation['prescriptive_training_recommendation']} to address the predictive skills gap in {$recommendation['focus_area']}.",
                     'type' => 'action',
+                ]);
+
+                continue;
+            }
+
+            if ($matchedTraining->secretariat_status === 'returned') {
+                $notifications->push([
+                    'title' => 'Training Application Returned',
+                    'message' => $matchedTraining->process_remarks ?: "Your application for {$matchedTraining->training_title} was returned. Review the remarks, then submit it again from this recommendation.",
+                    'type' => 'warning',
                 ]);
 
                 continue;
@@ -94,6 +104,31 @@ class EmployeeLearningController extends Controller
         return $notifications->unique('message')->values();
     }
 
+    /**
+     * @return list<array{id: int, title: string, category: string, provider: string|null, delivery_mode: string, venue: string|null, start_date: string|null, end_date: string|null, remaining_slots: int<0, max>}>
+     */
+    protected function publishedPrograms(): array
+    {
+        return array_values(TrainingProgram::query()
+            ->openForEnrollment()
+            ->withCount(['applications as claimed_slots' => fn ($query) => $query->where('status', '!=', 'rejected')])
+            ->orderBy('start_date')
+            ->get()
+            ->filter(fn (TrainingProgram $program): bool => $program->claimed_slots < $program->slots)
+            ->map(fn (TrainingProgram $program): array => [
+                'id' => $program->id,
+                'title' => $program->title,
+                'category' => $program->category,
+                'provider' => $program->provider,
+                'delivery_mode' => $program->delivery_mode,
+                'venue' => $program->venue,
+                'start_date' => $program->start_date?->toDateString(),
+                'end_date' => $program->end_date?->toDateString(),
+                'remaining_slots' => max(0, $program->slots - $program->claimed_slots),
+            ])
+            ->all());
+    }
+
     public function trainings(Request $request): Response
     {
         $user = $request->user();
@@ -114,7 +149,8 @@ class EmployeeLearningController extends Controller
 
         return Inertia::render('Employee/MyTrainings/Index', [
             'recommendations' => $recommendations->map(function (array $recommendation) use ($trainings) {
-                $applied = $trainings->contains(fn (TrainingApplication $training) => $training->training_title === $recommendation['prescriptive_training_recommendation']);
+                $applied = $trainings->contains(fn (TrainingApplication $training) => $training->learning_needs_analysis_id === $recommendation['lna_id']
+                    && $training->secretariat_status !== 'returned');
 
                 return [
                     ...$recommendation,
@@ -122,6 +158,7 @@ class EmployeeLearningController extends Controller
                 ];
             })->values(),
             'notifications' => $this->employeeNotifications($recommendations, $trainings, $lapEntries),
+            'programs' => $this->publishedPrograms(),
         ]);
     }
 
@@ -146,7 +183,9 @@ class EmployeeLearningController extends Controller
                     'id' => $item->id,
                     'training_title' => $item->training_title,
                     'training_type' => $item->training_type,
+                    'delivery_mode' => $item->delivery_mode,
                     'provider' => $item->provider,
+                    'venue' => $item->venue,
                     'office' => $item->office,
                     'start_date' => $item->start_date?->toDateString(),
                     'end_date' => $item->end_date?->toDateString(),
@@ -157,7 +196,8 @@ class EmployeeLearningController extends Controller
                 ]),
             'recommendations' => $recommendations
                 ->reject(fn (array $recommendation) => $trainings->contains(
-                    fn (TrainingApplication $training) => $training->learning_needs_analysis_id === $recommendation['lna_id'],
+                    fn (TrainingApplication $training) => $training->learning_needs_analysis_id === $recommendation['lna_id']
+                        && $training->secretariat_status !== 'returned',
                 ))
                 ->values(),
         ]);
@@ -172,7 +212,9 @@ class EmployeeLearningController extends Controller
                 'id' => $trainingApplication->id,
                 'training_title' => $trainingApplication->training_title,
                 'training_type' => $trainingApplication->training_type,
+                'delivery_mode' => $trainingApplication->delivery_mode,
                 'provider' => $trainingApplication->provider,
+                'venue' => $trainingApplication->venue,
                 'office' => $trainingApplication->office,
                 'start_date' => $trainingApplication->start_date?->toDateString(),
                 'end_date' => $trainingApplication->end_date?->toDateString(),
@@ -191,14 +233,10 @@ class EmployeeLearningController extends Controller
     {
         $validated = $request->validate([
             'lna_id' => ['required', 'integer'],
-            'training_type' => ['required', 'string', 'in:Invitational,In-house'],
-            'provider' => ['nullable', 'string', 'max:255'],
-            'office' => ['nullable', 'string', 'max:255'],
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date'],
         ]);
 
         $user = $request->user();
+        $user->loadMissing('employeeRecord');
         $lna = LearningNeedsAnalysis::query()
             ->whereKey($validated['lna_id'])
             ->where('user_id', $user->id)
@@ -215,36 +253,59 @@ class EmployeeLearningController extends Controller
             ]);
         }
 
-        $alreadyApplied = TrainingApplication::query()
+        $existingApplication = TrainingApplication::query()
             ->where('user_id', $user->id)
             ->where('learning_needs_analysis_id', $lna->id)
-            ->exists();
+            ->first();
 
-        if ($alreadyApplied) {
+        if ($existingApplication !== null && $existingApplication->secretariat_status !== 'returned') {
             return back()->withErrors([
                 'lna_id' => 'A training application has already been submitted for this reviewed LNA assessment.',
             ]);
         }
 
+        if ($existingApplication !== null && $existingApplication->learningDevelopmentPlan()->exists()) {
+            return back()->withErrors([
+                'lna_id' => 'This application already has an L&D Plan and cannot be resubmitted.',
+            ]);
+        }
+
         $recommendation = $this->recommendationProfile($lna);
 
-        TrainingApplication::query()->create([
+        $applicationFields = [
             'user_id' => $user->id,
             'learning_needs_analysis_id' => $lna->id,
             'employee_id' => $user->employee_id,
             'training_title' => $recommendation['prescriptive_training_recommendation'],
-            'training_type' => $validated['training_type'],
-            'provider' => $validated['provider'] ?? null,
-            'office' => $validated['office'] ?? $user->office,
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
+            'training_type' => in_array($recommendation['training_type'] ?? null, ['Invitational', 'In-house'], true)
+                ? $recommendation['training_type']
+                : 'In-house',
+            'delivery_mode' => null,
+            'provider' => null,
+            'venue' => null,
+            'office' => $user->office ?: $user->employeeRecord?->office,
+            'start_date' => null,
+            'end_date' => null,
             'progress_percent' => 0,
             'status' => 'applied',
             'secretariat_status' => 'pending',
             'is_attended' => false,
-        ]);
+            'completed_on' => null,
+            'process_remarks' => null,
+            'processed_by' => null,
+            'processed_at' => null,
+            'training_program_id' => null,
+        ];
 
-        return back()->with('success', 'Training application submitted to the Secretariat for processing.');
+        if ($existingApplication !== null) {
+            $existingApplication->update($applicationFields);
+        } else {
+            TrainingApplication::query()->create($applicationFields);
+        }
+
+        return back()->with('success', $existingApplication !== null
+            ? 'Returned training application resubmitted to the Secretariat.'
+            : 'Training application submitted to the Secretariat for processing.');
     }
 
     public function learningNeedsAnalysis(Request $request): Response
@@ -335,7 +396,7 @@ class EmployeeLearningController extends Controller
                 'employee_signature' => ['nullable', 'string', 'max:255'],
             ]);
 
-            $skills = collect($validated['skill_assessments']);
+            $skills = collect($this->stringMap($validated['skill_assessments']));
             $gapSkills = $skills
                 ->filter(fn (string $rating): bool => in_array($rating, ['N/A', '3', '4'], true) === false);
             $gaps = $gapSkills
@@ -345,7 +406,7 @@ class EmployeeLearningController extends Controller
             $competencyGap = $gaps->isEmpty()
                 ? 'No immediate competency gap identified in the selected skills.'
                 : 'Employee-identified development needs: '.$gaps->implode(', ').'.';
-            $learningMethods = collect($validated['preferred_learning_methods'])
+            $learningMethods = collect($this->stringList($validated['preferred_learning_methods']))
                 ->map(fn (string $method): string => $method === 'Others'
                     ? ($validated['preferred_learning_methods_other'] ?? 'Other learning method')
                     : $method);
@@ -475,5 +536,41 @@ class EmployeeLearningController extends Controller
                     'completed_on' => $item->completed_on?->toDateString(),
                 ]),
         ]);
+    }
+
+    /** @return array<string, string> */
+    private function stringMap(mixed $values): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        $result = [];
+
+        foreach ($values as $key => $value) {
+            if (is_string($key) && is_string($value)) {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
+    }
+
+    /** @return list<string> */
+    private function stringList(mixed $values): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        $result = [];
+
+        foreach ($values as $value) {
+            if (is_string($value)) {
+                $result[] = $value;
+            }
+        }
+
+        return $result;
     }
 }

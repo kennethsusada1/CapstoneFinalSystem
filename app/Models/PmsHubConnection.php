@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 class PmsHubConnection extends Model
 {
@@ -23,21 +22,24 @@ class PmsHubConnection extends Model
 
     protected $casts = [
         'requested_at' => 'datetime',
-        'accepted_at'  => 'datetime',
+        'accepted_at' => 'datetime',
     ];
 
     // Status constants
     const STATUS_DISCONNECTED = 'disconnected';
-    const STATUS_PENDING      = 'pending';
-    const STATUS_CONNECTED    = 'connected';
-    const STATUS_REJECTED     = 'rejected';
+
+    const STATUS_PENDING = 'pending';
+
+    const STATUS_CONNECTED = 'connected';
+
+    const STATUS_REJECTED = 'rejected';
 
     /**
      * Get the singleton row. Creates it if it doesn't exist yet.
      */
-    public static function instance(): static
+    public static function instance(): self
     {
-        return static::firstOrCreate([], [
+        return self::query()->firstOrCreate([], [
             'status' => self::STATUS_DISCONNECTED,
         ]);
     }

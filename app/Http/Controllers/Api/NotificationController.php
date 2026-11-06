@@ -83,12 +83,20 @@ class NotificationController extends Controller
      */
     private function supervisorNotifications(User $supervisor): Collection
     {
+        $supervisorEmployeeId = trim((string) $supervisor->employee_id);
+
+        if ($supervisorEmployeeId === '') {
+            return collect();
+        }
+
         return LearningNeedsAnalysis::query()
             ->with('user.employeeRecord')
             ->where('status', 'submitted')
+            ->whereHas('user', fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'employee')))
+            ->whereHas('user.employeeRecord', fn ($query) => $query->where('supervisor_employee_id', $supervisorEmployeeId))
             ->latest('submitted_on')
+            ->limit(20)
             ->get()
-            ->take(20)
             ->map(fn (LearningNeedsAnalysis $entry) => $this->notification(
                 100000 + $entry->id,
                 'lna.submitted',

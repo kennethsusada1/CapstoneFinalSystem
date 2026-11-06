@@ -13,6 +13,7 @@ export default function Index({ summary, activities, offices }) {
                     action="Download PDF report"
                     icon="bi-file-earmark-pdf"
                 />
+                <div className="sec-row" style={{ justifyContent: 'flex-end' }}><a className="sec-button" href="/secretariat/reports/ld-plans"><i className="bi bi-journal-text" />Open L&amp;D Plan reports</a></div>
 
                 <section className="sec-stats">
                     <StatCard label="Report Ready" value={summary?.total_applications ?? 0} icon="bi-files" />

@@ -14,13 +14,13 @@ use Illuminate\Support\Carbon;
  * lnd_user_id is null at intake and is set manually by Secretariat
  * when the employee's L&D account is activated.
  *
- * @property int         $id
- * @property int         $pms_user_id      Stable FK to smart-pms users.id
+ * @property int $id
+ * @property int $pms_user_id Stable FK to smart-pms users.id
  * @property string|null $name
  * @property string|null $email
  * @property string|null $position
  * @property string|null $office_name
- * @property int|null    $lnd_user_id      FK to L&D users.id — set after account activation
+ * @property int|null $lnd_user_id FK to L&D users.id — set after account activation
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User|null $lndUser

@@ -41,9 +41,9 @@ class StaticLnaAnalyticsService
         // A skill is flagged as a gap if EITHER the employee OR the supervisor
         // rated it low (1 or 2). Using merge() would overwrite employee ratings
         // with supervisor ratings for the same key, so we union the low-rated keys.
-        $lowFromEmployee   = $employeeRatings->filter(fn (string $r): bool => in_array($r, ['1', '2'], true))->keys();
+        $lowFromEmployee = $employeeRatings->filter(fn (string $r): bool => in_array($r, ['1', '2'], true))->keys();
         $lowFromSupervisor = $supervisorRatings->filter(fn (string $r): bool => in_array($r, ['1', '2'], true))->keys();
-        $lowRatedSkills    = $lowFromEmployee->merge($lowFromSupervisor)->unique()->sort()->values();
+        $lowRatedSkills = $lowFromEmployee->merge($lowFromSupervisor)->unique()->sort()->values();
 
         return [
             'predictive_skills_gap' => $lowRatedSkills->isEmpty()
@@ -54,7 +54,7 @@ class StaticLnaAnalyticsService
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, string|null>
      */
     private function profile(LearningNeedsAnalysis $entry): array
     {
@@ -66,7 +66,7 @@ class StaticLnaAnalyticsService
                 'skills_gap' => 'Leadership, coaching, delegation, and team supervision',
                 'training' => 'Supervisory Development Program',
                 'training_type' => 'In-house',
-                'provider' => 'HRDC Learning and Development Unit',
+                'provider' => null,
                 'delivery' => 'In-house workshop with guided coaching',
                 'timeframe' => 'Within the next 3 months',
             ],
@@ -75,7 +75,7 @@ class StaticLnaAnalyticsService
                 'skills_gap' => 'Digital tools, records management, and data analysis',
                 'training' => 'Digital Productivity and Data Management Workshop',
                 'training_type' => 'Invitational',
-                'provider' => 'Civil Service Commission / External ICT Partner',
+                'provider' => null,
                 'delivery' => 'Hands-on workshop and workplace application',
                 'timeframe' => 'Within the next 2 months',
             ],
@@ -84,7 +84,7 @@ class StaticLnaAnalyticsService
                 'skills_gap' => 'Written communication, presentation, and report preparation',
                 'training' => 'Technical Writing and Presentation Skills Training',
                 'training_type' => 'In-house',
-                'provider' => 'Secretariat and HRDC',
+                'provider' => null,
                 'delivery' => 'Instructor-led training with output review',
                 'timeframe' => 'Within the next 3 months',
             ],
@@ -93,7 +93,7 @@ class StaticLnaAnalyticsService
                 'skills_gap' => 'Client handling, service delivery, and stakeholder engagement',
                 'training' => 'Customer Service Excellence Program',
                 'training_type' => 'In-house',
-                'provider' => 'HRDC Service Quality Team',
+                'provider' => null,
                 'delivery' => 'Scenario-based workshop and coaching',
                 'timeframe' => 'Within the next 2 months',
             ],
@@ -102,7 +102,7 @@ class StaticLnaAnalyticsService
                 'skills_gap' => 'Planning, implementation monitoring, and target management',
                 'training' => 'Project Planning and Monitoring Workshop',
                 'training_type' => 'Invitational',
-                'provider' => 'DILG / Accredited Training Provider',
+                'provider' => null,
                 'delivery' => 'Workshop with an applied project plan',
                 'timeframe' => 'Within the next 3 months',
             ],
@@ -111,7 +111,7 @@ class StaticLnaAnalyticsService
                 'skills_gap' => 'Role-specific functional competency requiring development',
                 'training' => 'Functional Competency Enhancement Training',
                 'training_type' => 'In-house',
-                'provider' => 'HRDC Learning and Development Unit',
+                'provider' => null,
                 'delivery' => 'In-house training with supervisor coaching',
                 'timeframe' => 'Within the next 6 months',
             ],

@@ -10,7 +10,7 @@ export default function Index({ office, members }) {
     return (
         <AppLayout title="My Team" description={`Supervisor / ${office ?? 'Team Directory'}`}>
             <div className="sup-page">
-                <PageHero kicker="PEOPLE AND CAPABILITY" title="Know the team behind the work." description="View each employee's learning activity, current development status, and readiness for the next capability-building opportunity." href="/supervisor/nominations" action="Open nominations" icon="bi-person-plus" />
+                <PageHero kicker="PEOPLE AND CAPABILITY" title="Know the team behind the work." description="View each directly assigned employee's learning activity and current development status." href="/supervisor/trainings" action="View training schedule" icon="bi-calendar2-event" />
                 <section className="sup-stats">
                     <StatCard label="Team Size" value={(members ?? []).length} icon="bi-people-fill" />
                     <StatCard label="LNA Completed" value={(members ?? []).filter((item) => item.lna_count > 0).length} icon="bi-clipboard2-check" color="#34d399" />
@@ -19,7 +19,7 @@ export default function Index({ office, members }) {
                 </section>
 
                 <Panel title="Team Directory" subtitle={`${office ?? 'Unassigned office'} employee development view`} action={<div className="sup-search"><i className="bi bi-search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search team member" /></div>}>
-                    {filtered.length === 0 ? <EmptyState icon="bi-person-lines-fill" title="No matching team members" text="Try another search or verify office assignments." /> : (
+                    {filtered.length === 0 ? <EmptyState icon="bi-person-lines-fill" title="No directly assigned team members" text="Try another search or import HRMS records with each employee's direct supervisor ID." /> : (
                         <div className="sup-table-wrap">
                             <table className="sup-table">
                                 <thead><tr><th>Employee</th><th>LNA</th><th>Current Training</th><th>Completed</th><th>LAP</th><th>Readiness</th></tr></thead>

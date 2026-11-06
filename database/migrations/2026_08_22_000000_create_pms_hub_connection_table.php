@@ -28,7 +28,7 @@ return new class extends Migration
 
         // Seed the single row
         DB::table('pms_hub_connection')->insert([
-            'status'     => 'disconnected',
+            'status' => 'disconnected',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

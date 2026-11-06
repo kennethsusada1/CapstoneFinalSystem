@@ -11,8 +11,8 @@ use Illuminate\Support\Carbon;
  * Per-course completion record attached to a training referral.
  * Populated from the courses_completed array in the PMS callback payload.
  *
- * @property int         $id
- * @property int         $training_referral_id
+ * @property int $id
+ * @property int $training_referral_id
  * @property string|null $course_code
  * @property string|null $title
  * @property Carbon|null $completed_at

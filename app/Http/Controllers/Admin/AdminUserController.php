@@ -19,6 +19,7 @@ use Inertia\Response;
 
 class AdminUserController extends Controller
 {
+    /** @return list<string> */
     protected function manageableRoles(): array
     {
         return ['secretariat', 'hrdc', 'supervisor', 'employee'];

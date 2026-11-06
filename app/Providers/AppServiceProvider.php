@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Http\Responses\RoleBasedLoginResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;

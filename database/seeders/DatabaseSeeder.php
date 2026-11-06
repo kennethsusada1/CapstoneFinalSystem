@@ -22,6 +22,10 @@ class DatabaseSeeder extends Seeder
             Role::findOrCreate($role, 'web');
         }
 
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
         $accounts = [
             ['role' => 'system-admin', 'name' => 'System Admin', 'email' => 'admin@smartld.test'],
             ['role' => 'secretariat', 'name' => 'Secretariat User', 'email' => 'secretariat@smartld.test'],
@@ -51,11 +55,11 @@ class DatabaseSeeder extends Seeder
         }
 
         $employees = [
-            ['employee_id' => 'ADM-001', 'first_name' => 'System', 'last_name' => 'Admin', 'email' => 'admin@smartld.test', 'office' => 'ICT Office', 'position' => 'System Administrator'],
-            ['employee_id' => 'SEC-001', 'first_name' => 'Secretariat', 'last_name' => 'User', 'email' => 'secretariat@smartld.test', 'office' => 'HR Office', 'position' => 'L&D Secretariat'],
-            ['employee_id' => 'HRD-001', 'first_name' => 'HRDC', 'last_name' => 'User', 'email' => 'hrdc@smartld.test', 'office' => 'HR Office', 'position' => 'HRDC Member'],
-            ['employee_id' => 'SUP-001', 'first_name' => 'Supervisor', 'last_name' => 'User', 'email' => 'supervisor@smartld.test', 'office' => 'Operations', 'position' => 'Division Chief'],
-            ['employee_id' => 'EMP-001', 'first_name' => 'Employee', 'last_name' => 'User', 'email' => 'employee@smartld.test', 'office' => 'Operations', 'position' => 'Administrative Aide'],
+            ['employee_id' => 'ADM-001', 'first_name' => 'System', 'last_name' => 'Admin', 'email' => 'admin@smartld.test', 'office' => 'ICT Office', 'position' => 'System Administrator', 'role_family' => 'ict', 'seniority_level' => 2, 'hire_date' => '2018-06-01'],
+            ['employee_id' => 'SEC-001', 'first_name' => 'Secretariat', 'last_name' => 'User', 'email' => 'secretariat@smartld.test', 'office' => 'HR Office', 'position' => 'L&D Secretariat', 'role_family' => 'hr', 'seniority_level' => 2, 'hire_date' => '2019-03-15'],
+            ['employee_id' => 'HRD-001', 'first_name' => 'HRDC', 'last_name' => 'User', 'email' => 'hrdc@smartld.test', 'office' => 'HR Office', 'position' => 'HRDC Member', 'role_family' => 'hr', 'seniority_level' => 2, 'hire_date' => '2017-09-01'],
+            ['employee_id' => 'SUP-001', 'first_name' => 'Supervisor', 'last_name' => 'User', 'email' => 'supervisor@smartld.test', 'office' => 'Operations', 'position' => 'Division Chief', 'role_family' => 'administration', 'seniority_level' => 3, 'hire_date' => '2012-01-01'],
+            ['employee_id' => 'EMP-001', 'first_name' => 'Employee', 'last_name' => 'User', 'email' => 'employee@smartld.test', 'office' => 'Operations', 'position' => 'Administrative Aide', 'role_family' => 'administration', 'seniority_level' => 1, 'hire_date' => '2021-05-10', 'supervisor_employee_id' => 'SUP-001'],
         ];
 
         foreach ($employees as $employee) {
@@ -66,8 +70,13 @@ class DatabaseSeeder extends Seeder
                     'last_name' => $employee['last_name'],
                     'email' => $employee['email'],
                     'office' => $employee['office'],
+                    'supervisor_employee_id' => $employee['supervisor_employee_id'] ?? null,
                     'position' => $employee['position'],
-                    'employment_status' => 'Active',
+                    'education_level' => "Bachelor's Degree",
+                    'role_family' => $employee['role_family'],
+                    'seniority_level' => $employee['seniority_level'],
+                    'hire_date' => $employee['hire_date'],
+                    'employment_status' => 'Permanent',
                     'source' => 'Seeder',
                     'last_imported_at' => now(),
                 ],

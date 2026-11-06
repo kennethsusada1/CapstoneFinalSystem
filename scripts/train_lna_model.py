@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Train and export the explainable LNA Logistic Regression model.
+"""Train and export the LNA Logistic Regression model.
 
-The application consumes the exported JSON artifact and does not need Python
-or NumPy at request time.  The supplied dataset is synthetic, so the artifact
-is intended for the capstone prototype and must be retrained with validated
-organizational data before production use.
+The active application consumes the exported JSON artifact. Synthetic artifacts
+are for demos and require LNA_DEMO_MODE=true; production retraining only promotes
+validated, non-synthetic, supervisor-reviewed database records. The model
+excludes supervisor ratings and derived skill gaps from its predictors because
+supervisor ratings define the target.
 """
 
 from __future__ import annotations
@@ -17,13 +18,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+from sklearn.linear_model import LogisticRegression
 
 
 NUMERIC_FEATURES = [
     "employee_assessment",
-    "supervisor_assessment",
     "required_level",
-    "skill_gap",
     "ipcr_rating",
     "trainings_last_3_years",
     "years_of_service",
@@ -56,13 +56,17 @@ def sigmoid(value: np.ndarray | float) -> np.ndarray | float:
 
 
 def feature_schema(rows: list[dict[str, str]]) -> dict:
+    observed_values = {
+        field: [float(row[field]) for row in rows if row.get(field, "").strip()]
+        for field in NUMERIC_FEATURES
+    }
     means = {
-        field: float(np.mean([number(row.get(field, "")) for row in rows]))
+        field: float(np.mean(observed_values[field])) if observed_values[field] else 0.0
         for field in NUMERIC_FEATURES
     }
     scales = {}
     for field in NUMERIC_FEATURES:
-        values = np.array([number(row.get(field, ""), means[field]) for row in rows])
+        values = np.array(observed_values[field] or [means[field]], dtype=float)
         scale = float(np.std(values))
         scales[field] = scale if scale > 1e-9 else 1.0
 
@@ -104,21 +108,15 @@ def transform(rows: list[dict[str, str]], schema: dict) -> np.ndarray:
 
 
 def fit(matrix: np.ndarray, labels: np.ndarray) -> tuple[np.ndarray, float]:
-    weights = np.zeros(matrix.shape[1], dtype=float)
-    intercept = 0.0
-    learning_rate = 0.08
-    regularization = 0.08
-    sample_count = matrix.shape[0]
+    estimator = LogisticRegression(
+        C=12.5,
+        solver="lbfgs",
+        max_iter=3000,
+        random_state=42,
+    )
+    estimator.fit(matrix, labels)
 
-    for _ in range(4000):
-        probabilities = sigmoid(matrix @ weights + intercept)
-        error = probabilities - labels
-        gradient = (matrix.T @ error) / sample_count + regularization * weights
-        intercept_gradient = float(np.mean(error))
-        weights -= learning_rate * gradient
-        intercept -= learning_rate * intercept_gradient
-
-    return weights, intercept
+    return estimator.coef_[0].astype(float), float(estimator.intercept_[0])
 
 
 def roc_auc(labels: np.ndarray, probabilities: np.ndarray) -> float | None:
@@ -200,6 +198,11 @@ def main() -> None:
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--model-version", default="lna-logistic-v1")
     parser.add_argument("--data-source", default="synthetic")
+    parser.add_argument(
+        "--source-records",
+        type=int,
+        help="Number of source LNA records before competency-level expansion",
+    )
     args = parser.parse_args()
 
     rows = read_rows(args.input)
@@ -221,8 +224,8 @@ def main() -> None:
             "years": years,
             "training_rows": len(train_rows),
             "validation_rows": len(test_rows),
-            "synthetic": args.data_source == "synthetic",
-            "source": args.data_source,
+            "synthetic": args.data_source not in {"database", "validated"},
+            "source": args.data_source if args.data_source in {"database", "validated"} else "synthetic",
         },
         "validation": {
             "train_years": years[:-1],
@@ -240,6 +243,9 @@ def main() -> None:
         "feature_schema": final_model,
         "recommendation_catalog": recommendation_catalog(rows),
     }
+    if args.source_records is not None:
+        artifact["dataset"]["source_records"] = args.source_records
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
     print(json.dumps({"output": str(args.output), "validation": artifact["validation"], "training": training_metrics}, indent=2))

@@ -43,7 +43,7 @@ export default function Index({ employees, filters }) {
     const [search, setSearch] = useState(filters?.search ?? '');
     const [editingEmployee, setEditingEmployee] = useState(null);
     const importForm = useForm({
-        csv: 'employee_id,first_name,last_name,middle_name,email,office,position,employment_status\n',
+        csv: 'employee_id,first_name,last_name,middle_name,email,office,position,employment_status,supervisor_employee_id,education_level,role_family,seniority_level,hire_date,ipcr_2022,ipcr_2023,ipcr_2024,ipcr_2025,ipcr_2026\n',
     });
     const editForm = useForm({
         first_name: '',
@@ -51,7 +51,12 @@ export default function Index({ employees, filters }) {
         middle_name: '',
         email: '',
         office: '',
+        supervisor_employee_id: '',
         position: '',
+        education_level: '',
+        role_family: '',
+        seniority_level: '',
+        hire_date: '',
         employment_status: 'Active',
     });
 
@@ -81,7 +86,12 @@ export default function Index({ employees, filters }) {
             middle_name: employee.middle_name ?? '',
             email: employee.email ?? '',
             office: employee.office ?? '',
+            supervisor_employee_id: employee.supervisor_employee_id ?? '',
             position: employee.position ?? '',
+            education_level: employee.education_level ?? '',
+            role_family: employee.role_family ?? '',
+            seniority_level: employee.seniority_level == null ? '' : String(employee.seniority_level),
+            hire_date: employee.hire_date ?? '',
             employment_status: employee.employment_status ?? 'Active',
         });
         editForm.clearErrors();
@@ -108,7 +118,7 @@ export default function Index({ employees, filters }) {
                 <div style={cardStyle}>
                     <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--admin-text-primary)', marginBottom: '0.35rem' }}>Import Employee Records from HRMS</div>
                     <div style={{ fontSize: '0.82rem', color: 'var(--admin-text-muted)', marginBottom: '1rem' }}>
-                        Paste CSV content using the HRMS headers to import new employees or refresh existing employee records.
+                        Paste HRMS headers to import employee records, direct supervisor assignments, and historical IPCR ratings. Use columns such as ipcr_2022 through ipcr_2026. Supervisor employee IDs control which team records each supervisor can review.
                     </div>
                     {success && <div style={{ marginBottom: '1rem', padding: '0.75rem 0.9rem', borderRadius: 12, background: 'rgba(16,185,129,0.14)', color: '#86efac', border: '1px solid rgba(16,185,129,0.25)', fontSize: '0.82rem' }}>{success}</div>}
                     <form onSubmit={submitImport} style={{ display: 'grid', gap: '0.75rem' }}>
@@ -144,6 +154,7 @@ export default function Index({ employees, filters }) {
                                     <th style={{ paddingBottom: '0.65rem' }}>Employee ID</th>
                                     <th style={{ paddingBottom: '0.65rem' }}>Name</th>
                                     <th style={{ paddingBottom: '0.65rem' }}>Office</th>
+                                    <th style={{ paddingBottom: '0.65rem' }}>Supervisor ID</th>
                                     <th style={{ paddingBottom: '0.65rem' }}>Position</th>
                                     <th style={{ paddingBottom: '0.65rem' }}>Status</th>
                                     <th style={{ paddingBottom: '0.65rem' }}>Account</th>
@@ -159,6 +170,7 @@ export default function Index({ employees, filters }) {
                                             <div style={{ color: 'var(--admin-text-muted)', fontSize: '0.78rem' }}>{employee.email || 'No email'}</div>
                                         </td>
                                         <td style={{ padding: '0.8rem 0', color: 'var(--admin-text-secondary)' }}>{employee.office || '-'}</td>
+                                        <td style={{ padding: '0.8rem 0', color: 'var(--admin-text-secondary)' }}>{employee.supervisor_employee_id || '-'}</td>
                                         <td style={{ padding: '0.8rem 0', color: 'var(--admin-text-secondary)' }}>{employee.position || '-'}</td>
                                         <td style={{ padding: '0.8rem 0' }}>{employee.employment_status}</td>
                                         <td style={{ padding: '0.8rem 0', color: employee.has_account ? '#34d399' : 'var(--admin-text-muted)' }}>
@@ -202,6 +214,38 @@ export default function Index({ employees, filters }) {
                                     <input value={editForm.data.last_name} onChange={(e) => editForm.setData('last_name', e.target.value)} style={inputStyle} type="text" />
                                     {editForm.errors.last_name && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{editForm.errors.last_name}</div>}
                                 </div>
+                            </div>
+
+                            <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Direct supervisor employee ID</div>
+                                    <input value={editForm.data.supervisor_employee_id} onChange={(e) => editForm.setData('supervisor_employee_id', e.target.value)} style={inputStyle} type="text" />
+                                    {editForm.errors.supervisor_employee_id && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{editForm.errors.supervisor_employee_id}</div>}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Education level</div>
+                                    <input value={editForm.data.education_level} onChange={(e) => editForm.setData('education_level', e.target.value)} style={inputStyle} type="text" />
+                                    {editForm.errors.education_level && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{editForm.errors.education_level}</div>}
+                                </div>
+                            </div>
+
+                            <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Role family</div>
+                                    <input value={editForm.data.role_family} onChange={(e) => editForm.setData('role_family', e.target.value)} style={inputStyle} type="text" />
+                                    {editForm.errors.role_family && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{editForm.errors.role_family}</div>}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Seniority level (1-5)</div>
+                                    <input value={editForm.data.seniority_level} onChange={(e) => editForm.setData('seniority_level', e.target.value)} style={inputStyle} type="number" min="1" max="5" />
+                                    {editForm.errors.seniority_level && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{editForm.errors.seniority_level}</div>}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-secondary)', marginBottom: '0.35rem' }}>Hire date</div>
+                                <input value={editForm.data.hire_date} onChange={(e) => editForm.setData('hire_date', e.target.value)} style={inputStyle} type="date" />
+                                {editForm.errors.hire_date && <div style={{ marginTop: '0.35rem', color: '#fca5a5', fontSize: '0.78rem' }}>{editForm.errors.hire_date}</div>}
                             </div>
 
                             <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>

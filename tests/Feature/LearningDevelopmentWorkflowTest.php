@@ -109,6 +109,9 @@ test('employee request flows from supervisor to secretariat and hrdc approval', 
             'competency_gap' => 'Needs stronger report writing',
             'proposed_intervention' => 'Technical writing workshop',
             'priority_level' => 'high',
+            'skill_assessments' => [
+                'Technical Writing' => '1',
+            ],
         ])
         ->assertRedirect();
 
@@ -118,6 +121,9 @@ test('employee request flows from supervisor to secretariat and hrdc approval', 
         ->patch("/supervisor/lna-reviews/{$lna->id}", [
             'status' => 'reviewed',
             'review_remarks' => 'Endorsed for the recommended technical writing program.',
+            'supervisor_skill_assessments' => [
+                'Technical Writing' => '1',
+            ],
         ])
         ->assertRedirect();
 

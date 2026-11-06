@@ -22,7 +22,7 @@ class LnaAnalyticsService
     /**
      * Generate model-backed analytics for a supervisor-reviewed LNA.
      *
-     * @return array{predictive_skills_gap: string, prescriptive_training_recommendation: string|null, training_needed: bool, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, array<string, mixed>>}
+     * @return array{predictive_skills_gap: string, prescriptive_training_recommendation: string|null, training_needed: bool|null, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, array<string, mixed>>}
      */
     public function generate(LearningNeedsAnalysis $entry): array
     {
@@ -37,15 +37,33 @@ class LnaAnalyticsService
         $supervisorRatings = collect($entry->supervisor_skill_assessments ?? []);
         $fallback = $this->staticFallback->generate($entry);
         $employeeRecord = $entry->user->employeeRecord;
+        $asOf = $entry->submitted_on ?? $entry->created_at ?? now();
         $trainingCount = TrainingApplication::query()
             ->where('user_id', $entry->user_id)
-            ->where('created_at', '>=', now()->subYears(3))
+            ->where(fn ($query) => $query->where('status', 'completed')->orWhere('is_attended', true))
+            ->where(fn ($query) => $query->whereBetween('completed_on', [
+                $asOf->copy()->subYears(3)->toDateString(),
+                $asOf->toDateString(),
+            ])->orWhere(fn ($legacy) => $legacy->whereNull('completed_on')->whereBetween('created_at', [
+                $asOf->copy()->subYears(3),
+                $asOf,
+            ])))
             ->count();
+        $ipcrRatings = $employeeRecord?->performanceRecords
+            ?->whereBetween('review_year', [$asOf->year - 3, $asOf->year])
+            ->pluck('ipcr_rating')
+            ->filter(fn ($rating): bool => is_numeric($rating)) ?? collect();
+        $ipcrRating = $ipcrRatings->isNotEmpty()
+            ? round((float) $ipcrRatings->avg(), 2)
+            : $this->numeric($entry->ipcr_rating);
+        $yearsOfService = $employeeRecord?->hire_date === null
+            ? null
+            : max(0, $employeeRecord->hire_date->diffInYears($asOf));
         $recommendationCatalog = $model['recommendation_catalog'] ?? [];
         $threshold = (float) ($model['feature_schema']['threshold'] ?? 0.5);
 
         $predictions = $employeeRatings
-            ->map(function (mixed $employeeRating, string $skill) use ($entry, $model, $supervisorRatings, $trainingCount, $recommendationCatalog, $threshold, $fallback, $employeeRecord): ?array {
+            ->map(function (mixed $employeeRating, string $skill) use ($model, $supervisorRatings, $trainingCount, $recommendationCatalog, $threshold, $fallback, $employeeRecord, $ipcrRating, $yearsOfService): ?array {
                 $employeeScore = $this->rating($employeeRating);
 
                 if ($employeeScore === null) {
@@ -59,20 +77,18 @@ class LnaAnalyticsService
                 $skillGap = max(0, $requiredLevel - $supervisorScore);
                 $probability = $this->predict($model, [
                     'employee_assessment' => $employeeScore,
-                    'supervisor_assessment' => $supervisorScore,
                     'required_level' => $requiredLevel,
-                    'skill_gap' => $skillGap,
-                    'ipcr_rating' => $this->numeric($entry->ipcr_rating),
+                    'ipcr_rating' => $ipcrRating,
                     'trainings_last_3_years' => $trainingCount,
-                    'years_of_service' => null,
-                    'seniority_level' => $this->inferSeniority($employeeRecord?->position),
-                    'role_family' => $this->inferRoleFamily($employeeRecord?->position),
-                    'education_level' => '',
+                    'years_of_service' => $yearsOfService,
+                    'seniority_level' => $employeeRecord->seniority_level ?? $this->inferSeniority($employeeRecord?->position),
+                    'role_family' => $employeeRecord?->role_family ?: $this->inferRoleFamily($employeeRecord?->position),
+                    'education_level' => (string) ($employeeRecord->education_level ?? ''),
                     'employment_status' => (string) ($employeeRecord->employment_status ?? ''),
                     'competency_category' => (string) ($catalog['competency_category'] ?? ''),
                 ]);
                 $trainingTitle = (string) ($catalog['training_title'] ?? $fallback['prescriptive_training_recommendation']);
-                $category = (string) ($catalog['competency_category'] ?? 'AI-ranked skill development');
+                $category = (string) ($catalog['competency_category'] ?? 'LNA skill development');
                 $priority = $probability >= 0.75 ? 'high' : ($probability >= $threshold ? 'medium' : 'low');
                 $trainingMetadata = $this->trainingMetadata($trainingTitle);
 
@@ -97,7 +113,11 @@ class LnaAnalyticsService
             ->sortByDesc('probability')
             ->values();
 
-        $overallProbability = (float) ($predictions->max('probability') ?? 0);
+        if ($predictions->isEmpty()) {
+            return $this->fallbackAnalytics($entry);
+        }
+
+        $overallProbability = (float) $predictions->max('probability');
         $recommendations = $predictions
             ->filter(fn (array $prediction): bool => $prediction['probability'] >= $threshold)
             ->take(5)
@@ -111,20 +131,27 @@ class LnaAnalyticsService
             ->all();
         $trainingNeeded = $overallProbability >= $threshold;
         $topRecommendation = $recommendations[0] ?? null;
-
-        // Current production employee records may not yet contain every
-        // profile feature used by the trained model. Preserve a transparent
-        // rule-based recommendation in that case instead of displaying an
-        // empty result as if the model had enough evidence.
-        if ($recommendations === []) {
-            return [
-                ...$this->fallbackAnalytics($entry),
-                'analytics_model_version' => (string) ($model['model_version'] ?? 'lna-logistic-unknown').'-fallback',
-            ];
+        $assessedGaps = $employeeRatings
+            ->filter(fn (mixed $rating): bool => ($score = $this->rating($rating)) !== null && $score < 3)
+            ->keys()
+            ->merge($supervisorRatings
+                ->filter(fn (mixed $rating): bool => ($score = $this->rating($rating)) !== null && $score < 3)
+                ->keys());
+        $gapSummary = collect($recommendations)
+            ->pluck('competency_name')
+            ->merge($assessedGaps)
+            ->unique()
+            ->sort()
+            ->values()
+            ->implode(', ');
+        if ($gapSummary === '') {
+            $gapSummary = $recommendations === []
+                ? 'No immediate training need predicted from the reviewed assessment.'
+                : collect($recommendations)->pluck('competency_name')->implode(', ');
         }
 
         return [
-            'predictive_skills_gap' => collect($recommendations)->pluck('competency_name')->implode(', '),
+            'predictive_skills_gap' => $gapSummary,
             'prescriptive_training_recommendation' => $topRecommendation['training_title'] ?? null,
             'training_needed' => $trainingNeeded,
             'training_need_probability' => round($overallProbability, 4),
@@ -144,6 +171,26 @@ class LnaAnalyticsService
             ->values();
 
         if ($recommendations->isEmpty()) {
+            if ($entry->training_needed !== true) {
+                return [
+                    'lna_id' => $entry->id,
+                    'focus_area' => $entry->focus_area,
+                    'priority_level' => $entry->priority_level,
+                    'predictive_skills_gap' => $entry->predictive_skills_gap,
+                    'prescriptive_training_recommendation' => null,
+                    'training_type' => null,
+                    'provider' => null,
+                    'track' => $entry->training_needed === false ? 'No immediate training need' : 'Assessment data incomplete',
+                    'rationale' => $entry->training_needed === false
+                        ? 'The reviewed employee and supervisor ratings did not identify a competency rated below 3.'
+                        : 'A recommendation is unavailable because the reviewed assessment does not contain enough ratings.',
+                    'training_needed' => $entry->training_needed,
+                    'confidence_score' => null,
+                    'model_version' => $entry->analytics_model_version,
+                    'ranked_recommendations' => [],
+                ];
+            }
+
             return [
                 ...$this->staticFallback->recommendation($entry),
                 'training_needed' => $entry->training_needed,
@@ -163,7 +210,7 @@ class LnaAnalyticsService
             'prescriptive_training_recommendation' => $top->training_title,
             'training_type' => $top->training_type,
             'provider' => $top->provider,
-            'track' => $top->competency_category ?: 'AI-ranked skill development',
+            'track' => $top->competency_category ?: 'LNA skill development',
             'rationale' => $top->recommendation_text,
             'training_needed' => (bool) $entry->training_needed,
             'confidence_score' => (float) ($entry->training_need_probability ?? $top->probability),
@@ -196,16 +243,54 @@ class LnaAnalyticsService
         $path = (string) config('services.lna.model_path');
 
         if ($path === '' || ! File::exists($path)) {
-            Log::warning('LNA model artifact is missing; static fallback will be used.', ['path' => $path]);
+            Log::warning('LNA model artifact is missing; reviewed ratings analysis will be used.', ['path' => $path]);
 
             return null;
         }
 
         try {
             $decoded = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
-            $this->model = is_array($decoded) ? $decoded : null;
+            $dataSource = is_array($decoded) ? ($decoded['dataset']['source'] ?? null) : null;
+            $isSynthetic = is_array($decoded) && ($decoded['dataset']['synthetic'] ?? true) === true;
+            $syntheticDemoAllowed = app()->environment(['local', 'testing'])
+                || (bool) config('services.lna.demo_mode', false);
+
+            if (! is_array($decoded)
+                || ($isSynthetic && (! $syntheticDemoAllowed || $dataSource !== 'synthetic'))
+                || (! $isSynthetic && ! in_array($dataSource, ['database', 'validated'], true))) {
+                Log::warning('LNA model provenance is not permitted in this environment.', [
+                    'path' => $path,
+                    'data_source' => $dataSource,
+                    'synthetic' => $isSynthetic,
+                    'environment' => app()->environment(),
+                ]);
+
+                return null;
+            }
+
+            $schema = $decoded['feature_schema'] ?? [];
+            $featureNames = is_array($schema['feature_names'] ?? null) ? $schema['feature_names'] : [];
+            $leakedFeatures = array_intersect(['supervisor_assessment', 'skill_gap'], $featureNames);
+            $validationMetrics = $decoded['validation']['metrics'] ?? [];
+            $validationRows = (int) ($validationMetrics['rows'] ?? 0);
+            $rocAuc = is_numeric($validationMetrics['roc_auc'] ?? null) ? (float) $validationMetrics['roc_auc'] : null;
+            $minimumRows = (int) config('services.lna.auto_training.min_validation_rows', 30);
+            $minimumRocAuc = (float) config('services.lna.auto_training.min_validation_roc_auc', 0.70);
+
+            if ($featureNames === [] || $leakedFeatures !== [] || $validationRows < $minimumRows || $rocAuc === null || $rocAuc < $minimumRocAuc) {
+                Log::warning('LNA model artifact failed runtime validation; rule-based ratings analysis will be used.', [
+                    'path' => $path,
+                    'validation_rows' => $validationRows,
+                    'validation_roc_auc' => $rocAuc,
+                    'leaked_features' => array_values($leakedFeatures),
+                ]);
+
+                return null;
+            }
+
+            $this->model = $decoded;
         } catch (Throwable $exception) {
-            Log::warning('LNA model artifact could not be loaded; static fallback will be used.', [
+            Log::warning('LNA model artifact could not be loaded; reviewed ratings analysis will be used.', [
                 'path' => $path,
                 'error' => $exception->getMessage(),
             ]);
@@ -249,17 +334,41 @@ class LnaAnalyticsService
     }
 
     /**
-     * @return array{predictive_skills_gap: string, prescriptive_training_recommendation: string|null, training_needed: bool, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, mixed>}
+     * @return array{predictive_skills_gap: string, prescriptive_training_recommendation: string|null, training_needed: bool|null, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, mixed>}
      */
     private function fallbackAnalytics(LearningNeedsAnalysis $entry): array
     {
+        $entry->loadMissing('user.employeeRecord');
         $fallback = $this->staticFallback->generate($entry);
+        $employeeRatings = collect($entry->skill_assessments ?? []);
+        $supervisorRatings = collect($entry->supervisor_skill_assessments ?? []);
+        $validRatings = $employeeRatings->values()->concat($supervisorRatings->values())
+            ->map(fn (mixed $value): ?float => $this->rating($value))
+            ->filter();
+        $gaps = $employeeRatings
+            ->filter(fn (mixed $value): bool => ($rating = $this->rating($value)) !== null && $rating < 3)
+            ->keys()
+            ->merge($supervisorRatings
+                ->filter(fn (mixed $value): bool => ($rating = $this->rating($value)) !== null && $rating < 3)
+                ->keys())
+            ->unique()
+            ->sort()
+            ->values();
+        $trainingNeeded = $validRatings->isEmpty() ? null : $gaps->isNotEmpty();
+        $gapSummary = match ($trainingNeeded) {
+            true => $gaps->implode(', '),
+            false => 'No immediate competency gap identified in reviewed ratings.',
+            default => 'Training need could not be determined because the reviewed assessment contains no valid competency ratings.',
+        };
 
         return [
-            ...$fallback,
-            'training_needed' => true,
+            'predictive_skills_gap' => $gapSummary,
+            'prescriptive_training_recommendation' => $trainingNeeded === true
+                ? $fallback['prescriptive_training_recommendation']
+                : null,
+            'training_needed' => $trainingNeeded,
             'training_need_probability' => null,
-            'analytics_model_version' => 'static-fallback-v1',
+            'analytics_model_version' => 'rule-based-ratings-v1',
             'recommendations' => [],
         ];
     }
@@ -309,7 +418,7 @@ class LnaAnalyticsService
     }
 
     /**
-     * @return array{training_type: string, provider: string}
+     * @return array{training_type: string, provider: string|null}
      */
     private function trainingMetadata(string $trainingTitle): array
     {
@@ -317,7 +426,7 @@ class LnaAnalyticsService
 
         return [
             'training_type' => str_contains($lower, 'project') || str_contains($lower, 'digital') ? 'Invitational' : 'In-house',
-            'provider' => 'HRDC Learning and Development Unit',
+            'provider' => null,
         ];
     }
 }

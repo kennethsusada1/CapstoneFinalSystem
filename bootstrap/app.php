@@ -1,8 +1,9 @@
 <?php
 
-use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\EnsureEmployeeAccess;
+use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RecordAuditLog;
 use App\Http\Middleware\RedirectNonTraineeToPms;
 use App\Http\Middleware\VerifyLndApiToken;
 use Illuminate\Console\Scheduling\Schedule;
@@ -28,10 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
         $middleware->alias([
-            'role'              => RoleMiddleware::class,
-            'employee.access'   => EnsureEmployeeAccess::class,
-            'lnd.token'         => VerifyLndApiToken::class,
-            'trainee.only'      => RedirectNonTraineeToPms::class,
+            'role' => RoleMiddleware::class,
+            'employee.access' => EnsureEmployeeAccess::class,
+            'lnd.token' => VerifyLndApiToken::class,
+            'trainee.only' => RedirectNonTraineeToPms::class,
+            'audit' => RecordAuditLog::class,
         ]);
 
         $middleware->web(append: [

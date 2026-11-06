@@ -11,7 +11,7 @@ export default function Index({ trainingApplications, programs }) {
     return (
         <AppLayout title="Trainings" description="Supervisor / Team Training Monitor">
             <div className="sup-page">
-                <PageHero kicker="LEARNING OPERATIONS" title="Keep every learning commitment visible." description="Monitor team training applications and progress, then use the planning calendar to prepare future participation and workload coverage." href="/supervisor/nominations" action="Plan nominations" icon="bi-calendar-plus" />
+                <PageHero kicker="LEARNING OPERATIONS" title="Keep every learning commitment visible." description="Monitor your assigned team’s applications and progress alongside the Secretariat’s published training schedule." href="/supervisor/team" action="Review my team" icon="bi-people" />
                 <section className="sup-stats">
                     <StatCard label="Applications" value={(trainingApplications ?? []).length} icon="bi-files" />
                     <StatCard label="Applied" value={(trainingApplications ?? []).filter((item) => item.status === 'applied').length} icon="bi-hourglass-split" color="#38bdf8" />
@@ -33,7 +33,7 @@ export default function Index({ trainingApplications, programs }) {
                         </div>
                     )}
                 </Panel>
-                <Panel title="2026 Training Calendar" subtitle="Static programs for team planning">
+                <Panel title="Published Training Schedule" subtitle="Programs and remaining seats published by the Secretariat">
                     <div className="sup-grid-3">
                         {(programs ?? []).map((program) => <div className="sup-list-item" key={program.id}><div className="sup-row"><StatusPill>{program.category}</StatusPill><span className="sup-muted">{program.slots} slots</span></div><div className="sup-title" style={{ marginTop: '.65rem' }}>{program.title}</div><div className="sup-muted" style={{ marginTop: '.3rem' }}>{program.schedule}</div><div className="sup-copy" style={{ marginTop: '.45rem' }}>{program.provider}<br />{program.mode}</div></div>)}
                     </div>

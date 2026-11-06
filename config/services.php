@@ -42,21 +42,22 @@ return [
     // Inbound: smart-pms calls our API with this token.
     // We generate it; PMS stores it as LND_API_TOKEN in their .env.
     'lnd' => [
-        'api_token'          => env('LND_API_TOKEN'),
+        'api_token' => env('LND_API_TOKEN'),
         'redirect_hmac_secret' => env('LND_REDIRECT_HMAC_SECRET'),
     ],
 
     // Outbound: we call PMS callback endpoint with PMS_CALLBACK_TOKEN.
     // PMS generates it; we store it here.
     'pms' => [
-        'base_url'       => env('PMS_BASE_URL'),
+        'base_url' => env('PMS_BASE_URL'),
         'callback_token' => env('PMS_CALLBACK_TOKEN'),
-        'timeout'        => env('PMS_TIMEOUT', 20),
+        'timeout' => env('PMS_TIMEOUT', 20),
     ],
 
     'lna' => [
         'model_path' => env('LNA_MODEL_PATH', resource_path('models/lna_logistic_model.json')),
         'threshold' => (float) env('LNA_MODEL_THRESHOLD', 0.5),
+        'demo_mode' => env('LNA_DEMO_MODE', false),
         'auto_training' => [
             'enabled' => env('LNA_AUTO_TRAINING_ENABLED', true),
             'min_rows' => (int) env('LNA_AUTO_TRAINING_MIN_ROWS', 100),

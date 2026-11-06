@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
+import React, { useState } from 'react';
 import AppLayout from '@/layouts/AppLayout';
 
 // L&D only connects to PMS — one pillar entry
@@ -360,10 +360,13 @@ export default function Index({ pmsConnection, lndCredentials }: Props) {
     // Poll every 5 seconds when disconnected or pending so we catch incoming requests instantly
     React.useEffect(() => {
         const shouldPoll = pmsConnection.status === 'disconnected' || pmsConnection.status === 'pending';
-        if (!shouldPoll) return;
+
+        if (!shouldPoll) {
+return;
+}
 
         const id = setInterval(() => {
-            router.reload({ only: ['pmsConnection'], preserveScroll: true });
+            router.reload({ only: ['pmsConnection'] });
         }, 5000);
 
         return () => clearInterval(id);
@@ -374,6 +377,7 @@ export default function Index({ pmsConnection, lndCredentials }: Props) {
         if (prevStatus.current !== 'pending' && pmsConnection.status === 'pending') {
             setShowModal(true);
         }
+
         prevStatus.current = pmsConnection.status;
     }, [pmsConnection.status]);
 
@@ -391,7 +395,7 @@ export default function Index({ pmsConnection, lndCredentials }: Props) {
     }
 
     return (
-        <AppLayout title="HRMO Hub">
+        <AppLayout title="HRMO Hub" description="Manage the connection between the L&D platform and PMS.">
             {/* Notification modal — appears automatically when PMS sends a connection request */}
             {showModal && isPending && (
                 <RequestModal

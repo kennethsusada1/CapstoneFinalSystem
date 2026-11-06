@@ -7,6 +7,7 @@ use App\Models\LearningActionPlan;
 use App\Models\LearningDevelopmentPlan;
 use App\Models\ProposedTrainingProgram;
 use App\Models\TrainingApplication;
+use App\Models\TrainingProgram;
 use App\Models\TrainingReferral;
 use App\Models\User;
 use App\Services\PmsCallbackService;
@@ -14,7 +15,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -48,14 +51,94 @@ class SecretariatPortalController extends Controller
 
         return Inertia::render('Secretariat/Applications/Index', [
             'applications' => $this->applicationRows($applications),
+            'programs' => $this->programCatalog(),
         ]);
+    }
+
+    public function trainingPrograms(): Response
+    {
+        return Inertia::render('Secretariat/TrainingPrograms/Index', [
+            'programs' => $this->trainingProgramRows(TrainingProgram::query()->withCount([
+                'applications as claimed_slots' => fn ($query) => $query->where('status', '!=', 'rejected'),
+            ])->orderByDesc('created_at')->get()),
+        ]);
+    }
+
+    public function storeTrainingProgram(Request $request): RedirectResponse
+    {
+        $validated = $request->validate($this->trainingProgramRules($request));
+        $validated['created_by'] = $request->user()->id;
+
+        TrainingProgram::query()->create($validated);
+
+        return back()->with('success', 'Training program saved to the catalog.');
+    }
+
+    public function updateTrainingProgram(Request $request, TrainingProgram $trainingProgram): RedirectResponse
+    {
+        $validated = $request->validate($this->trainingProgramRules($request));
+        DB::transaction(function () use ($trainingProgram, $validated): void {
+            $lockedProgram = TrainingProgram::query()->whereKey($trainingProgram->id)->lockForUpdate()->firstOrFail();
+            $applications = $lockedProgram->applications();
+            $claimedSeats = (clone $applications)->where('status', '!=', 'rejected')->count();
+
+            if ($validated['slots'] < $claimedSeats) {
+                throw ValidationException::withMessages([
+                    'slots' => "The capacity cannot be lower than the {$claimedSeats} current application(s).",
+                ]);
+            }
+
+            if ((clone $applications)->exists() && $validated['title'] !== $lockedProgram->title) {
+                throw ValidationException::withMessages([
+                    'title' => 'A program title cannot change after applications have been linked to it.',
+                ]);
+            }
+
+            $lockedProgram->update($validated);
+            $lockedProgram->applications()
+                ->whereNotIn('status', ['rejected', 'completed'])
+                ->update([
+                    'training_type' => $lockedProgram->training_type,
+                    'delivery_mode' => $lockedProgram->delivery_mode,
+                    'provider' => $lockedProgram->provider,
+                    'venue' => $lockedProgram->venue,
+                    'start_date' => $lockedProgram->start_date,
+                    'end_date' => $lockedProgram->end_date,
+                ]);
+        });
+
+        return back()->with('success', 'Training program details updated.');
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function trainingProgramRules(Request $request): array
+    {
+        return [
+            'title' => ['required', 'string', 'max:255'],
+            'category' => ['required', 'string', 'max:120'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'provider' => ['nullable', 'string', 'max:255'],
+            'training_type' => ['required', Rule::in(['Invitational', 'In-house'])],
+            'delivery_mode' => ['required', Rule::in(['Face-to-face', 'Online', 'Hybrid'])],
+            'venue' => ['nullable', 'string', 'max:255'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => $request->filled('start_date')
+                ? ['nullable', 'date', 'after_or_equal:start_date']
+                : ['nullable', 'date'],
+            'slots' => ['required', 'integer', 'min:1', 'max:10000'],
+            'status' => ['required', Rule::in(['draft', 'published', 'cancelled'])],
+        ];
     }
 
     public function processApplication(Request $request, TrainingApplication $trainingApplication): RedirectResponse
     {
+        $wasCompleted = $trainingApplication->status === 'completed';
         $validated = $request->validate([
             'secretariat_status' => ['required', Rule::in(['pending', 'processed', 'returned'])],
             'activity_status' => ['nullable', Rule::in(['ongoing', 'completed'])],
+            'training_program_id' => ['nullable', 'integer', 'exists:training_programs,id'],
             'process_remarks' => [
                 $request->string('secretariat_status')->toString() === 'returned' ? 'required' : 'nullable',
                 'string',
@@ -70,14 +153,91 @@ class SecretariatPortalController extends Controller
             'processed_at' => now(),
         ];
 
-        if (isset($validated['activity_status']) && in_array($trainingApplication->status, ['ongoing', 'completed'], true)) {
-            $updates['status'] = $validated['activity_status'];
-            $updates['completed_on'] = $validated['activity_status'] === 'completed'
-                ? ($trainingApplication->completed_on ?? now()->toDateString())
-                : null;
-        }
+        DB::transaction(function () use ($validated, $trainingApplication, &$updates): void {
+            if ($validated['secretariat_status'] === 'returned') {
+                if ($trainingApplication->status !== 'applied') {
+                    throw ValidationException::withMessages([
+                        'secretariat_status' => 'Only an application awaiting program approval can be returned to the employee.',
+                    ]);
+                }
 
-        $trainingApplication->update($updates);
+                if ($trainingApplication->learningDevelopmentPlan()->exists()) {
+                    throw ValidationException::withMessages([
+                        'secretariat_status' => 'An application cannot be returned after its L&D Plan has been created.',
+                    ]);
+                }
+
+                $updates = [
+                    ...$updates,
+                    'training_program_id' => null,
+                    'delivery_mode' => null,
+                    'provider' => null,
+                    'venue' => null,
+                    'start_date' => null,
+                    'end_date' => null,
+                ];
+            }
+
+            if ($validated['secretariat_status'] !== 'returned'
+                && filled($validated['training_program_id'] ?? null)
+                && (int) $validated['training_program_id'] !== (int) $trainingApplication->training_program_id) {
+                if ($validated['secretariat_status'] !== 'processed') {
+                    throw ValidationException::withMessages([
+                        'training_program_id' => 'A catalog program can only be assigned when the application is marked processed.',
+                    ]);
+                }
+
+                if ($trainingApplication->learningDevelopmentPlan()->exists()) {
+                    throw ValidationException::withMessages([
+                        'training_program_id' => 'A program cannot be changed after its L&D Plan has been created.',
+                    ]);
+                }
+
+                $program = TrainingProgram::query()
+                    ->openForEnrollment()
+                    ->whereKey($validated['training_program_id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $program) {
+                    throw ValidationException::withMessages([
+                        'training_program_id' => 'Choose a program that is currently published.',
+                    ]);
+                }
+
+                $claimedSeats = $program->applications()
+                    ->where('status', '!=', 'rejected')
+                    ->where('training_applications.id', '!=', $trainingApplication->id)
+                    ->count();
+
+                if ($claimedSeats >= $program->slots) {
+                    throw ValidationException::withMessages([
+                        'training_program_id' => 'This program has no remaining seats.',
+                    ]);
+                }
+
+                $updates = [
+                    ...$updates,
+                    'training_program_id' => $program->id,
+                    'training_title' => $program->title,
+                    'training_type' => $program->training_type,
+                    'delivery_mode' => $program->delivery_mode,
+                    'provider' => $program->provider,
+                    'venue' => $program->venue,
+                    'start_date' => $program->start_date,
+                    'end_date' => $program->end_date,
+                ];
+            }
+
+            if (isset($validated['activity_status']) && in_array($trainingApplication->status, ['ongoing', 'completed'], true)) {
+                $updates['status'] = $validated['activity_status'];
+                $updates['completed_on'] = $validated['activity_status'] === 'completed'
+                    ? ($trainingApplication->completed_on ?? now()->toDateString())
+                    : null;
+            }
+
+            $trainingApplication->update($updates);
+        });
 
         // ---------------------------------------------------------------
         // If this application is linked to a PMS referral and has just
@@ -86,7 +246,7 @@ class SecretariatPortalController extends Controller
         // The callback is best-effort — failure is logged and stored on
         // the referral (pms_notify_error) but does not fail this request.
         // ---------------------------------------------------------------
-        if (($validated['activity_status'] ?? null) === 'completed' && $trainingApplication->training_referral_id !== null) {
+        if (! $wasCompleted && ($validated['activity_status'] ?? null) === 'completed' && $trainingApplication->training_referral_id !== null) {
             $referral = $trainingApplication->trainingReferral;
 
             if ($referral !== null) {
@@ -185,6 +345,51 @@ class SecretariatPortalController extends Controller
         ]);
     }
 
+    public function updateTrainingMonitor(Request $request, TrainingApplication $trainingApplication): RedirectResponse
+    {
+        abort_unless(in_array($trainingApplication->status, ['ongoing', 'completed'], true), 404);
+        $wasCompleted = $trainingApplication->status === 'completed';
+
+        $validated = $request->validate([
+            'activity_status' => ['required', Rule::in(['ongoing', 'completed'])],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => $request->filled('start_date')
+                ? ['nullable', 'date', 'after_or_equal:start_date']
+                : ['nullable', 'date'],
+            'progress_percent' => ['required', 'integer', 'between:0,100'],
+            'is_attended' => ['required', 'boolean'],
+        ]);
+
+        if ($trainingApplication->status === 'completed' && $validated['activity_status'] === 'ongoing') {
+            return back()->withErrors(['activity_status' => 'A completed training record cannot be reopened.']);
+        }
+
+        $completed = $validated['activity_status'] === 'completed';
+        $trainingApplication->update([
+            'status' => $validated['activity_status'],
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
+            'progress_percent' => $completed ? 100 : $validated['progress_percent'],
+            'is_attended' => $completed || $validated['is_attended'],
+            'completed_on' => $completed ? ($trainingApplication->completed_on ?? now()->toDateString()) : null,
+        ]);
+
+        if (! $wasCompleted && $completed && $trainingApplication->training_referral_id !== null) {
+            $referral = $trainingApplication->trainingReferral;
+
+            if ($referral !== null) {
+                app(PmsCallbackService::class)->notifyComplete(
+                    referral: $referral,
+                    completedAt: $trainingApplication->completed_on?->toIso8601String() ?? now()->toIso8601String(),
+                    coursesCompleted: $this->completedCourses($referral),
+                    trainerRemarks: null,
+                );
+            }
+        }
+
+        return back()->with('success', 'Training schedule and completion status updated.');
+    }
+
     public function lapSubmissions(): Response
     {
         return Inertia::render('Secretariat/LapSubmissions/Index', [
@@ -238,6 +443,87 @@ class SecretariatPortalController extends Controller
                 ->map(fn ($items, $office) => ['office' => $office, 'applications' => $items->count(), 'completed' => $items->where('status', 'completed')->count()])
                 ->sortByDesc('applications')
                 ->values(),
+        ]);
+    }
+
+    public function ldPlanReports(Request $request): Response
+    {
+        $planningYear = trim((string) $request->query('planning_year', (string) now()->year));
+        abort_unless(preg_match('/^\d{4}$/', $planningYear) === 1, 422);
+
+        $plans = LearningDevelopmentPlan::query()
+            ->with(['submitter', 'trainingApplication.user', 'programs'])
+            ->where('planning_year', $planningYear)
+            ->latest()
+            ->get();
+        $availableYears = LearningDevelopmentPlan::query()
+            ->select('planning_year')
+            ->distinct()
+            ->orderByDesc('planning_year')
+            ->pluck('planning_year')
+            ->map(fn ($year): string => (string) $year)
+            ->push((string) now()->year)
+            ->unique()
+            ->values();
+
+        return Inertia::render('Secretariat/Reports/LdPlans', [
+            'planningYear' => $planningYear,
+            'availableYears' => $availableYears,
+            'summary' => [
+                'plans' => $plans->count(),
+                'submitted' => $plans->where('status', 'submitted')->count(),
+                'drafts' => $plans->where('status', 'draft')->count(),
+                'approved' => $plans->where('review_status', 'approved')->count(),
+                'under_review' => $plans->where('review_status', 'under-review')->count(),
+                'disapproved' => $plans->where('review_status', 'disapproved')->count(),
+            ],
+            'plans' => $plans->map(fn (LearningDevelopmentPlan $plan): array => $this->ldPlanReportRow($plan)),
+        ]);
+    }
+
+    public function exportLdPlanReport(Request $request): HttpResponse
+    {
+        $planningYear = trim((string) $request->query('planning_year', (string) now()->year));
+        abort_unless(preg_match('/^\d{4}$/', $planningYear) === 1, 422);
+        $plans = LearningDevelopmentPlan::query()
+            ->with(['submitter', 'trainingApplication.user', 'programs'])
+            ->where('planning_year', $planningYear)
+            ->latest()
+            ->get();
+
+        $lines = [
+            'SMART L&D',
+            "LEARNING AND DEVELOPMENT PLAN REPORT - {$planningYear}",
+            'Generated: '.now()->format('F d, Y h:i A'),
+            '',
+            'SUMMARY',
+            'Total plans: '.$plans->count(),
+            'Submitted to HRDC: '.$plans->where('status', 'submitted')->count(),
+            'Draft plans: '.$plans->where('status', 'draft')->count(),
+            '',
+            'PLAN DETAILS',
+            'Title | Submitter | Employee | Program(s) | Plan status | HRDC status | Submitted',
+        ];
+
+        foreach ($plans as $plan) {
+            $lines[] = implode(' | ', [
+                $plan->title,
+                $plan->submitter->name,
+                $plan->trainingApplication?->user->name ?? 'Organization plan',
+                $plan->priority_programs,
+                ucfirst($plan->status),
+                ucfirst($plan->review_status),
+                $plan->submitted_at?->toDateString() ?? 'Not submitted',
+            ]);
+            $lines[] = 'Objectives: '.$plan->objectives;
+            if (filled($plan->budget_notes)) {
+                $lines[] = 'Budget and implementation notes: '.$plan->budget_notes;
+            }
+        }
+
+        return response($this->makePdf($lines), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="ld-plan-report-'.$planningYear.'.pdf"',
         ]);
     }
 
@@ -341,10 +627,13 @@ class SecretariatPortalController extends Controller
             'id' => $application->id,
             'employee_name' => $application->user->name,
             'employee_id' => $application->employee_id,
+            'training_program_id' => $application->training_program_id,
             'office' => $application->office ?: $application->user->office ?: $application->user->employeeRecord?->office,
             'training_title' => $application->training_title,
             'training_type' => $application->training_type,
+            'delivery_mode' => $application->delivery_mode,
             'provider' => $application->provider,
+            'venue' => $application->venue,
             'start_date' => $application->start_date?->toDateString(),
             'end_date' => $application->end_date?->toDateString(),
             'progress_percent' => $application->progress_percent,
@@ -403,6 +692,34 @@ class SecretariatPortalController extends Controller
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function ldPlanReportRow(LearningDevelopmentPlan $plan): array
+    {
+        return [
+            'id' => $plan->id,
+            'title' => $plan->title,
+            'planning_year' => $plan->planning_year,
+            'objectives' => $plan->objectives,
+            'priority_programs' => $plan->priority_programs,
+            'budget_notes' => $plan->budget_notes,
+            'status' => $plan->status,
+            'review_status' => $plan->review_status,
+            'review_remarks' => $plan->review_remarks,
+            'submitted_by' => $plan->submitter->name,
+            'submitted_at' => $plan->submitted_at?->toDateTimeString(),
+            'employee_name' => $plan->trainingApplication?->user?->name,
+            'employee_id' => $plan->trainingApplication?->employee_id,
+            'training_title' => $plan->trainingApplication?->training_title,
+            'program_decisions' => $plan->programs->map(fn (ProposedTrainingProgram $program): array => [
+                'title' => $program->title,
+                'status' => $program->status,
+                'review_remarks' => $program->review_remarks,
+            ])->values(),
+        ];
+    }
+
+    /**
      * @param  \Illuminate\Database\Eloquent\Collection<int, TrainingApplication>  $applications
      * @param  \Illuminate\Database\Eloquent\Collection<int, LearningActionPlan>  $plans
      * @return array<string, int>
@@ -441,16 +758,58 @@ class SecretariatPortalController extends Controller
     }
 
     /**
-     * @return list<array<string, int|string>>
+     * @param  \Illuminate\Database\Eloquent\Collection<int, TrainingProgram>  $programs
+     * @return list<array{id: int, title: string, category: string, description: string|null, provider: string|null, training_type: string, delivery_mode: string, venue: string|null, start_date: string|null, end_date: string|null, slots: int, claimed_slots: int, remaining_slots: int<0, max>, status: string}>
+     */
+    private function trainingProgramRows($programs): array
+    {
+        return array_values($programs->map(fn (TrainingProgram $program): array => [
+            'id' => $program->id,
+            'title' => $program->title,
+            'category' => $program->category,
+            'description' => $program->description,
+            'provider' => $program->provider,
+            'training_type' => $program->training_type,
+            'delivery_mode' => $program->delivery_mode,
+            'venue' => $program->venue,
+            'start_date' => $program->start_date?->toDateString(),
+            'end_date' => $program->end_date?->toDateString(),
+            'slots' => $program->slots,
+            'claimed_slots' => $program->claimed_slots,
+            'remaining_slots' => max(0, $program->slots - $program->claimed_slots),
+            'status' => $program->status,
+        ])->all());
+    }
+
+    /**
+     * @return list<array<string, int|string|null>>
      */
     private function programCatalog(): array
     {
-        return [
-            ['id' => 1, 'title' => 'Supervisory Development Program', 'category' => 'Leadership', 'schedule' => 'August 18-20, 2026', 'slots' => 24, 'provider' => 'HRDC Learning Unit', 'mode' => 'Face-to-face'],
-            ['id' => 2, 'title' => 'Digital Productivity and Data Management', 'category' => 'Digital Skills', 'schedule' => 'September 8-9, 2026', 'slots' => 30, 'provider' => 'CSC ICT Academy', 'mode' => 'Hybrid'],
-            ['id' => 3, 'title' => 'Technical Writing and Presentation Skills', 'category' => 'Communication', 'schedule' => 'October 6-7, 2026', 'slots' => 25, 'provider' => 'HRDC and Secretariat', 'mode' => 'Face-to-face'],
-            ['id' => 4, 'title' => 'Project Planning and Monitoring Workshop', 'category' => 'Project Management', 'schedule' => 'November 12-14, 2026', 'slots' => 20, 'provider' => 'Accredited Training Partner', 'mode' => 'Hybrid'],
-        ];
+        return array_values(TrainingProgram::query()
+            ->openForEnrollment()
+            ->withCount(['applications as claimed_slots' => fn ($query) => $query->where('status', '!=', 'rejected')])
+            ->orderBy('start_date')
+            ->get()
+            ->filter(fn (TrainingProgram $program): bool => $program->claimed_slots < $program->slots)
+            ->map(function (TrainingProgram $program): array {
+                $schedule = $program->start_date?->format('M j, Y') ?? 'Schedule to be confirmed';
+
+                if ($program->end_date !== null && $program->end_date->toDateString() !== $program->start_date?->toDateString()) {
+                    $schedule .= ' - '.$program->end_date->format('M j, Y');
+                }
+
+                return [
+                    'id' => $program->id,
+                    'title' => $program->title,
+                    'category' => $program->category,
+                    'schedule' => $schedule,
+                    'slots' => max(0, $program->slots - $program->claimed_slots),
+                    'provider' => $program->provider ?? 'Provider to be confirmed',
+                    'mode' => $program->delivery_mode,
+                ];
+            })
+            ->all());
     }
 
     /**

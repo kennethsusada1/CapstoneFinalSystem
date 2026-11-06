@@ -5,9 +5,10 @@ import { EmptyState, Initials, PageHero, Panel, SecretariatStyles, StatCard, Sta
 
 const toneFor = (status) => status === 'processed' ? 'success' : status === 'returned' ? 'danger' : 'warning';
 
-function ProcessForm({ application }) {
+function ProcessForm({ application, programs }) {
     const form = useForm({
         secretariat_status: application.secretariat_status,
+        training_program_id: application.training_program_id ? String(application.training_program_id) : '',
         activity_status: ['ongoing', 'completed'].includes(application.status) ? application.status : '',
         process_remarks: application.process_remarks ?? '',
     });
@@ -21,7 +22,19 @@ function ProcessForm({ application }) {
                     <option value="processed">Mark processed for L&D planning</option>
                     <option value="returned">Return to employee</option>
                 </select>
+                {form.errors.secretariat_status && <span className="sec-error">{form.errors.secretariat_status}</span>}
             </div>
+            {!application.has_ld_plan && (
+                <div className="sec-field full">
+                    <label>Schedule from published catalog</label>
+                    <select value={form.data.training_program_id} onChange={(event) => form.setData('training_program_id', event.target.value)}>
+                        <option value="">Keep the requested title and schedule later</option>
+                        {(programs ?? []).map((program) => <option key={program.id} value={program.id}>{program.title} · {program.slots} seats · {program.schedule}</option>)}
+                    </select>
+                    <span className="sec-muted">Selecting a program records its provider and schedule on this application. The program's remaining seat count is enforced when saved.</span>
+                    {form.errors.training_program_id && <span className="sec-error">{form.errors.training_program_id}</span>}
+                </div>
+            )}
             {['ongoing', 'completed'].includes(application.status) && (
                 <div className="sec-field">
                     <label>Approved activity status</label>
@@ -43,7 +56,7 @@ function ProcessForm({ application }) {
     );
 }
 
-export default function Index({ applications }) {
+export default function Index({ applications, programs }) {
     const { props } = usePage();
     const [activeQueue, setActiveQueue] = useState('pending');
     const [query, setQuery] = useState('');
@@ -130,7 +143,7 @@ export default function Index({ applications }) {
                                             <p className="sec-copy">{item.supervisor_remarks || 'No supervisor remarks recorded.'}</p>
                                             <div className="sec-muted">{item.supervisor_reviewed_by ? `Evaluated by ${item.supervisor_reviewed_by}` : 'Reviewer not recorded'}{item.has_ld_plan ? ' · L&D Plan already created' : ''}</div>
                                         </div>
-                                        <ProcessForm application={item} />
+                                        <ProcessForm application={item} programs={programs} />
                                     </>
                                 )}
                             </article>

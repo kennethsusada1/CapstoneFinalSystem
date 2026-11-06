@@ -1,7 +1,7 @@
 import { createInertiaApp, router } from '@inertiajs/react';
-import { createRoot } from 'react-dom/client';
 import type { ComponentType } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Smart L&D';
 
@@ -12,7 +12,10 @@ function NavigationLoader() {
 
     useEffect(() => {
         const removeStartListener = router.on('start', () => {
-            if (hideTimer.current) clearTimeout(hideTimer.current);
+            if (hideTimer.current) {
+clearTimeout(hideTimer.current);
+}
+
             startedAt.current = Date.now();
             setVisible(true);
         });
@@ -24,11 +27,16 @@ function NavigationLoader() {
         return () => {
             removeStartListener();
             removeFinishListener();
-            if (hideTimer.current) clearTimeout(hideTimer.current);
+
+            if (hideTimer.current) {
+clearTimeout(hideTimer.current);
+}
         };
     }, []);
 
-    if (!visible) return null;
+    if (!visible) {
+return null;
+}
 
     return (
         <div className="navigation-loader" role="status" aria-live="polite" aria-label="Loading page">
@@ -76,11 +84,14 @@ createInertiaApp({
         }
 
         const page = await match();
+
         return page.default;
     },
     strictMode: true,
     setup({ el, App, props }) {
-        if (!el) throw new Error('Inertia root element was not found.');
+        if (!el) {
+throw new Error('Inertia root element was not found.');
+}
 
         createRoot(el).render(
             <>

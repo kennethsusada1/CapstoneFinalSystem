@@ -21,14 +21,29 @@ class SupervisorLnaController extends Controller
             ->whereKey($request->user()->getAuthIdentifier())
             ->firstOrFail();
         $teamOffice = $this->effectiveOffice($supervisor);
+        $supervisorEmployeeId = trim((string) $supervisor->employee_id);
+        $hasSingleSupervisorFallback = User::role('supervisor')->count() === 1;
 
         $entries = LearningNeedsAnalysis::query()
             ->with(['user.employeeRecord', 'reviewer', 'recommendations'])
+            ->whereHas('user', fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'employee')))
+            ->when($supervisorEmployeeId === '', fn ($query) => $query->whereRaw('1 = 0'))
+            ->when($supervisorEmployeeId !== '', fn ($query) => $query->whereHas(
+                'user.employeeRecord',
+                function ($recordQuery) use ($supervisorEmployeeId, $hasSingleSupervisorFallback): void {
+                    $recordQuery->where(function ($assignmentQuery) use ($supervisorEmployeeId, $hasSingleSupervisorFallback): void {
+                        $assignmentQuery->where('supervisor_employee_id', $supervisorEmployeeId);
+
+                        if ($hasSingleSupervisorFallback) {
+                            $assignmentQuery->orWhereNull('supervisor_employee_id')
+                                ->orWhere('supervisor_employee_id', '');
+                        }
+                    });
+                },
+            ))
             ->latest('submitted_on')
             ->latest('id')
-            ->get()
-            ->filter(fn (LearningNeedsAnalysis $entry) => $this->canReview($supervisor, $entry))
-            ->values();
+            ->get();
 
         return Inertia::render('Supervisor/LearningNeedsAnalysis/Index', [
             'teamOffice' => $teamOffice,
@@ -83,8 +98,7 @@ class SupervisorLnaController extends Controller
         Request $request,
         LearningNeedsAnalysis $learningNeedsAnalysis,
         LnaAnalyticsService $analyticsService,
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $learningNeedsAnalysis->loadMissing('user.employeeRecord');
         $supervisor = User::query()
             ->with('employeeRecord')
@@ -158,8 +172,18 @@ class SupervisorLnaController extends Controller
     private function canReview(User $supervisor, LearningNeedsAnalysis $entry): bool
     {
         $employee = $entry->user;
+        $supervisorEmployeeId = trim((string) $supervisor->employee_id);
+        $assignedSupervisorId = trim((string) $employee->employeeRecord?->supervisor_employee_id);
 
-        return $employee->hasRole('employee');
+        if ($supervisorEmployeeId === '' || ! $employee->hasRole('employee') || $employee->employeeRecord === null) {
+            return false;
+        }
+
+        if ($assignedSupervisorId !== '') {
+            return $assignedSupervisorId === $supervisorEmployeeId;
+        }
+
+        return User::role('supervisor')->count() === 1;
     }
 
     private function effectiveOffice(User $user): ?string
@@ -191,5 +215,4 @@ class SupervisorLnaController extends Controller
                 : (int) round((($reviewed + $returned) / $entries->count()) * 100),
         ];
     }
-
 }

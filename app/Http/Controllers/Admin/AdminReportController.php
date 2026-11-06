@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\EmployeeRecord;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminReportController extends Controller
@@ -37,7 +39,7 @@ class AdminReportController extends Controller
 
     public function export(Request $request): StreamedResponse
     {
-        $rows = User::query()
+        $rows = DB::table('users')
             ->leftJoin('employee_records', 'users.employee_id', '=', 'employee_records.employee_id')
             ->select([
                 'users.name',
@@ -53,6 +55,11 @@ class AdminReportController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
+
+            if ($handle === false) {
+                throw new RuntimeException('Unable to open the CSV output stream.');
+            }
+
             fputcsv($handle, ['Name', 'Email', 'Employee ID', 'Office', 'Position', 'Employment Status', 'Verified At', 'Activation Sent At']);
 
             foreach ($rows as $row) {
