@@ -32,15 +32,13 @@ class EmployeeDashboardController extends Controller
     protected function notifications(Collection $recommendations, Collection $trainings, Collection $lapEntries): Collection
     {
         $items = collect();
+        $availableRecommendationCount = 0;
 
         foreach ($recommendations as $recommendation) {
             $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['prescriptive_training_recommendation']);
 
             if (! $matchedTraining) {
-                $items->push([
-                    'title' => 'Recommended Training',
-                    'message' => "Proceed with {$recommendation['prescriptive_training_recommendation']} for {$recommendation['focus_area']}.",
-                ]);
+                $availableRecommendationCount++;
 
                 continue;
             }
@@ -53,15 +51,26 @@ class EmployeeDashboardController extends Controller
             }
         }
 
-        foreach ($trainings->filter(fn (TrainingApplication $training) => $training->status === 'completed' || $training->is_attended) as $training) {
-            $hasLap = $lapEntries->contains(fn (LearningActionPlan $lap) => $lap->training_title === $training->training_title);
+        if ($availableRecommendationCount > 0) {
+            $assessmentLabel = $availableRecommendationCount === 1 ? 'assessment has' : 'assessments have';
 
-            if (! $hasLap) {
-                $items->push([
-                    'title' => 'Learning Action Plan',
-                    'message' => "Submit your Learning Action Plan for {$training->training_title}.",
-                ]);
-            }
+            $items->push([
+                'title' => 'Training Recommendations Available',
+                'message' => "{$availableRecommendationCount} supervisor-reviewed LNA {$assessmentLabel} training recommendations ready. Review your options and choose the training that best fits your development needs.",
+            ]);
+        }
+
+        $trainingsNeedingLap = $trainings->filter(fn (TrainingApplication $training): bool => ($training->status === 'completed' || $training->is_attended)
+            && ! $lapEntries->contains(fn (LearningActionPlan $lap): bool => $lap->training_title === $training->training_title));
+
+        if ($trainingsNeedingLap->isNotEmpty()) {
+            $trainingCount = $trainingsNeedingLap->count();
+            $trainingLabel = $trainingCount === 1 ? 'completed training needs' : 'completed trainings need';
+
+            $items->push([
+                'title' => 'Learning Action Plan Required',
+                'message' => "{$trainingCount} {$trainingLabel} a Learning Action Plan. Submit one for each training you completed.",
+            ]);
         }
 
         return $items->unique('message')->values();

@@ -244,17 +244,26 @@ class NotificationController extends Controller
                     '/employee/learning-needs-analysis',
                     $entry->reviewed_at ?? $entry->updated_at,
                 ));
-            } elseif ($entry->status === 'reviewed' && $entry->trainingApplications->isEmpty()) {
-                $notifications->push($this->notification(
-                    700000 + $entry->id,
-                    'lna.reviewed',
-                    'success',
-                    'Supervisor Evaluation Complete',
-                    "Your {$entry->focus_area} LNA was endorsed. You may now submit the recommended training application.",
-                    '/employee/training-applications',
-                    $entry->reviewed_at ?? $entry->updated_at,
-                ));
             }
+        }
+
+        $readyEntries = $lnaEntries->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
+            && $entry->trainingApplications->isEmpty());
+
+        if ($readyEntries->isNotEmpty()) {
+            $latestReadyEntry = $readyEntries->first();
+            $count = $readyEntries->count();
+            $assessmentLabel = $count === 1 ? 'assessment has' : 'assessments have';
+
+            $notifications->push($this->notification(
+                700000 + $latestReadyEntry->id,
+                'lna.reviewed',
+                'success',
+                'Training Recommendations Available',
+                "{$count} supervisor-reviewed LNA {$assessmentLabel} training recommendations ready. Review the available options and submit an application when ready.",
+                '/employee/recommendations',
+                $latestReadyEntry->reviewed_at ?? $latestReadyEntry->updated_at,
+            ));
         }
 
         TrainingApplication::query()

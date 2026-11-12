@@ -48,16 +48,13 @@ class EmployeeLearningController extends Controller
     protected function employeeNotifications(Collection $recommendations, Collection $trainings, Collection $lapEntries): Collection
     {
         $notifications = collect();
+        $availableRecommendationCount = 0;
 
         foreach ($recommendations as $recommendation) {
             $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->learning_needs_analysis_id === $recommendation['lna_id']);
 
             if (! $matchedTraining) {
-                $notifications->push([
-                    'title' => 'Training Recommendation Available',
-                    'message' => "You are advised to undergo {$recommendation['prescriptive_training_recommendation']} to address the predictive skills gap in {$recommendation['focus_area']}.",
-                    'type' => 'action',
-                ]);
+                $availableRecommendationCount++;
 
                 continue;
             }
@@ -89,16 +86,28 @@ class EmployeeLearningController extends Controller
             }
         }
 
-        foreach ($trainings->filter(fn (TrainingApplication $training) => $training->status === 'completed' || $training->is_attended) as $training) {
-            $hasLap = $lapEntries->contains(fn (LearningActionPlan $lap) => $lap->training_title === $training->training_title);
+        if ($availableRecommendationCount > 0) {
+            $assessmentLabel = $availableRecommendationCount === 1 ? 'assessment has' : 'assessments have';
 
-            if (! $hasLap) {
-                $notifications->push([
-                    'title' => 'Learning Action Plan Required',
-                    'message' => "Submit your Learning Action Plan for {$training->training_title} after training completion.",
-                    'type' => 'warning',
-                ]);
-            }
+            $notifications->push([
+                'title' => 'Training Recommendations Available',
+                'message' => "{$availableRecommendationCount} supervisor-reviewed LNA {$assessmentLabel} training recommendations ready. Review the options below and choose the one that best fits your needs.",
+                'type' => 'action',
+            ]);
+        }
+
+        $trainingsNeedingLap = $trainings->filter(fn (TrainingApplication $training): bool => ($training->status === 'completed' || $training->is_attended)
+            && ! $lapEntries->contains(fn (LearningActionPlan $lap): bool => $lap->training_title === $training->training_title));
+
+        if ($trainingsNeedingLap->isNotEmpty()) {
+            $trainingCount = $trainingsNeedingLap->count();
+            $trainingLabel = $trainingCount === 1 ? 'completed training needs' : 'completed trainings need';
+
+            $notifications->push([
+                'title' => 'Learning Action Plan Required',
+                'message' => "{$trainingCount} {$trainingLabel} a Learning Action Plan. Submit one for each training you completed.",
+                'type' => 'warning',
+            ]);
         }
 
         return $notifications->unique('message')->values();

@@ -1,14 +1,31 @@
 import { Link } from '@inertiajs/react';
+import { useState } from 'react';
 import AppLayout from '@/layouts/AppLayout';
 import { EmployeeStyles, EmptyState, PageHero, Panel, StatusPill } from '../Shared';
 
 export default function Index({ recommendations, notifications, programs }) {
+    const [showAllNotices, setShowAllNotices] = useState(false);
+    const noticeItems = notifications ?? [];
+    const visibleNotices = showAllNotices ? noticeItems : noticeItems.slice(0, 3);
+
     return (
         <AppLayout title="Training Recommendations" description="Employee / LNA Gap Analysis">
             <div className="emp-page">
                 <PageHero kicker="LNA GAP ANALYSIS" title="Your skills gap and recommended training." description="Review competency gaps and training recommendations recorded after supervisor review. Model probabilities appear only when a validated logistic model is available." href="/employee/training-applications" action="Apply for training" icon="bi-journal-arrow-up" />
                 <section className="emp-grid-2">
-                    <Panel title="Training Notices" subtitle="Current reminders and required actions"><div className="emp-list">{(notifications ?? []).length === 0 && <EmptyState icon="bi-bell" title="No notices yet" text="Complete your LNA assessment to begin your learning path." />}{(notifications ?? []).map((item, index) => <div className="emp-item" key={`${item.title}-${index}`}><div className="emp-row"><StatusPill tone={item.type === 'warning' ? 'warning' : 'info'}>{item.title}</StatusPill><i className="bi bi-bell emp-muted" /></div><div className="emp-copy" style={{ marginTop: '.5rem' }}>{item.message}</div></div>)}</div></Panel>
+                    <Panel
+                        title="Training Notices"
+                        subtitle="Current reminders and required actions"
+                        action={noticeItems.length > 3 && <button className="emp-link" type="button" onClick={() => setShowAllNotices((visible) => !visible)} aria-expanded={showAllNotices} style={{ border: 0, padding: 0, background: 'transparent', cursor: 'pointer' }}>{showAllNotices ? 'Show fewer' : `Show all (${noticeItems.length})`}</button>}
+                    >
+                        <div className="emp-list">
+                            {noticeItems.length === 0 && <EmptyState icon="bi-bell" title="No notices yet" text="Complete your LNA assessment to begin your learning path." />}
+                            {visibleNotices.map((item, index) => <div className="emp-item" key={`${item.title}-${index}`}>
+                                <div className="emp-row"><StatusPill tone={item.type === 'warning' ? 'warning' : item.type === 'notice' ? 'success' : 'info'}>{item.title}</StatusPill><i className="bi bi-bell emp-muted" /></div>
+                                <div className="emp-copy" style={{ marginTop: '.5rem' }}>{item.message}</div>
+                            </div>)}
+                        </div>
+                    </Panel>
                     <Panel title="How Recommendations Work" subtitle="Reviewed ratings with validated model support when available"><div className="emp-list"><div className="emp-item"><div className="emp-title">1. Supervisor completes the review</div><div className="emp-copy">Your analysis appears after the LNA is reviewed by your assigned supervisor.</div></div><div className="emp-item"><div className="emp-title">2. Competency gaps are identified</div><div className="emp-copy">The system checks employee and supervisor ratings. It uses a reviewed logistic model only after validation on real historical records; otherwise it reports a rule-based gap without a probability.</div></div><div className="emp-item"><div className="emp-title">3. Training is confirmed through the workflow</div><div className="emp-copy">The Secretariat confirms an actual program and schedule, and HRDC reviews the proposed program before approval.</div></div></div></Panel>
                 </section>
                 <Panel title="Supervisor-Reviewed Recommendations" subtitle="Actionable recommendations generated after LNA review">
