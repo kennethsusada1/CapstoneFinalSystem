@@ -34,12 +34,17 @@ class EmployeeDashboardController extends Controller
         $items = collect();
 
         foreach ($recommendations as $recommendation) {
-            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['predictive_training_recommendation']);
+            $trainingTitle = $recommendation['prescriptive_training_recommendation'] ?? null;
+            if ($trainingTitle === null) {
+                continue;
+            }
+
+            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $trainingTitle);
 
             if (! $matchedTraining) {
                 $items->push([
                     'title' => 'Recommended Training',
-                    'message' => "Proceed with {$recommendation['predictive_training_recommendation']} for {$recommendation['focus_area']}.",
+                    'message' => "Proceed with {$trainingTitle} for {$recommendation['focus_area']}.",
                 ]);
 
                 continue;
@@ -89,7 +94,7 @@ class EmployeeDashboardController extends Controller
                 && $entry->prescriptive_skills_gap !== null
                 && $entry->predictive_training_recommendation !== null)
             ->map(fn (LearningNeedsAnalysis $item) => $this->recommendationProfile($item))
-            ->unique(fn (array $item) => $item['focus_area'].'|'.$item['predictive_training_recommendation'])
+            ->unique(fn (array $item) => $item['focus_area'].'|'.($item['prescriptive_training_recommendation'] ?? ''))
             ->values();
 
         $completedByMonth = $trainings
