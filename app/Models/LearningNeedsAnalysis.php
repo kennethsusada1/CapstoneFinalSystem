@@ -27,8 +27,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $supervisor_signed_on
  * @property string $focus_area
  * @property string $competency_gap
- * @property string|null $predictive_skills_gap
- * @property string|null $prescriptive_training_recommendation
+ * @property string|null $prescriptive_skills_gap
+ * @property string|null $predictive_training_recommendation
  * @property bool|null $training_needed
  * @property float|null $training_need_probability
  * @property string|null $analytics_model_version
@@ -61,8 +61,8 @@ use Illuminate\Support\Carbon;
     'supervisor_signed_on',
     'focus_area',
     'competency_gap',
-    'predictive_skills_gap',
-    'prescriptive_training_recommendation',
+    'prescriptive_skills_gap',
+    'predictive_training_recommendation',
     'training_needed',
     'training_need_probability',
     'analytics_model_version',

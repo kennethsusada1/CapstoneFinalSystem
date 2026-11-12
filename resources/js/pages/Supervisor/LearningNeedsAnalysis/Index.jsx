@@ -57,6 +57,8 @@ const skillGroups = [
     },
 ];
 
+const skillOrder = skillGroups.flatMap((group) => group.items);
+
 function ReviewForm({ entry, supervisorName }) {
     const submittedSkills = entry.skill_assessments ?? {};
     const skills = skillGroups.flatMap((group) => group.items).filter((skill) => Object.prototype.hasOwnProperty.call(submittedSkills, skill));
@@ -348,8 +350,8 @@ export default function Index({ teamOffice, supervisorName, summary, lnaEntries 
                                                 <div className="lna-employee-ratings">
                                                     <div className="lna-section-heading"><span>Employee Self-Assessment</span><strong>Read-only reference from submitted LNA</strong></div>
                                                     <div className="lna-rating-reference">
-                                                        {Object.entries(entry.skill_assessments).map(([skill, rating]) => (
-                                                            <div key={skill}><span>{skill}</span><strong>{rating}</strong></div>
+                                                        {skillOrder.filter((skill) => Object.prototype.hasOwnProperty.call(entry.skill_assessments, skill)).map((skill) => (
+                                                            <div key={skill}><span>{skill}</span><strong>{entry.skill_assessments[skill]}</strong></div>
                                                         ))}
                                                     </div>
                                                 </div>

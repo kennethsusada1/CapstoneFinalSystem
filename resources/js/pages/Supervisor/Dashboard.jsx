@@ -107,8 +107,8 @@ function AnalyticsWatchlist({ entries = [] }) {
                         <StatusPill tone={entry.training_needed ? 'warning' : entry.training_needed === false ? 'success' : 'info'}>{entry.training_needed ? 'Training need' : entry.training_needed === false ? 'No immediate need' : 'Review data'}</StatusPill>
                     </div>
                     <div className="sup-analytics-watch-grid">
-                        <div><span>Predicted skills gap</span><strong>{entry.predictive_skills_gap}</strong></div>
-                        <div><span>Prescribed training</span><strong>{entry.prescriptive_training_recommendation || 'No prescribed training'}</strong></div>
+                        <div><span>Identified skills gap</span><strong>{entry.prescriptive_skills_gap}</strong></div>
+                        <div><span>Predicted training</span><strong>{entry.predictive_training_recommendation || 'No training predicted'}</strong></div>
                         <div><span>Probability</span><strong className="sup-analytics-watch-score">{entry.training_need_probability == null ? 'Unavailable' : `${percentage(entry.training_need_probability).toFixed(1)}%`}</strong></div>
                     </div>
                 </div>

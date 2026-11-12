@@ -22,7 +22,7 @@ class LnaAnalyticsService
     /**
      * Generate model-backed analytics for a supervisor-reviewed LNA.
      *
-     * @return array{predictive_skills_gap: string, prescriptive_training_recommendation: string|null, training_needed: bool|null, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, array<string, mixed>>}
+     * @return array{prescriptive_skills_gap: string, predictive_training_recommendation: string|null, training_needed: bool|null, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, array<string, mixed>>}
      */
     public function generate(LearningNeedsAnalysis $entry): array
     {
@@ -87,7 +87,7 @@ class LnaAnalyticsService
                     'employment_status' => (string) ($employeeRecord->employment_status ?? ''),
                     'competency_category' => (string) ($catalog['competency_category'] ?? ''),
                 ]);
-                $trainingTitle = (string) ($catalog['training_title'] ?? $fallback['prescriptive_training_recommendation']);
+                $trainingTitle = (string) ($catalog['training_title'] ?? $fallback['predictive_training_recommendation']);
                 $category = (string) ($catalog['competency_category'] ?? 'LNA skill development');
                 $priority = $probability >= 0.75 ? 'high' : ($probability >= $threshold ? 'medium' : 'low');
                 $trainingMetadata = $this->trainingMetadata($trainingTitle);
@@ -151,8 +151,8 @@ class LnaAnalyticsService
         }
 
         return [
-            'predictive_skills_gap' => $gapSummary,
-            'prescriptive_training_recommendation' => $topRecommendation['training_title'] ?? null,
+            'prescriptive_skills_gap' => $gapSummary,
+            'predictive_training_recommendation' => $topRecommendation['training_title'] ?? null,
             'training_needed' => $trainingNeeded,
             'training_need_probability' => round($overallProbability, 4),
             'analytics_model_version' => (string) ($model['model_version'] ?? 'lna-logistic-unknown'),
@@ -176,8 +176,8 @@ class LnaAnalyticsService
                     'lna_id' => $entry->id,
                     'focus_area' => $entry->focus_area,
                     'priority_level' => $entry->priority_level,
-                    'predictive_skills_gap' => $entry->predictive_skills_gap,
-                    'prescriptive_training_recommendation' => null,
+                    'prescriptive_skills_gap' => $entry->prescriptive_skills_gap,
+                    'predictive_training_recommendation' => null,
                     'training_type' => null,
                     'provider' => null,
                     'track' => $entry->training_needed === false ? 'No immediate training need' : 'Assessment data incomplete',
@@ -191,8 +191,10 @@ class LnaAnalyticsService
                 ];
             }
 
+            $fallbackRecommendation = $this->staticFallback->recommendation($entry);
+
             return [
-                ...$this->staticFallback->recommendation($entry),
+                ...$fallbackRecommendation,
                 'training_needed' => $entry->training_needed,
                 'confidence_score' => $entry->training_need_probability,
                 'model_version' => $entry->analytics_model_version,
@@ -206,8 +208,8 @@ class LnaAnalyticsService
             'lna_id' => $entry->id,
             'focus_area' => $entry->focus_area,
             'priority_level' => $entry->priority_level,
-            'predictive_skills_gap' => $entry->predictive_skills_gap,
-            'prescriptive_training_recommendation' => $top->training_title,
+            'prescriptive_skills_gap' => $entry->prescriptive_skills_gap,
+            'predictive_training_recommendation' => $top->training_title,
             'training_type' => $top->training_type,
             'provider' => $top->provider,
             'track' => $top->competency_category ?: 'LNA skill development',
@@ -334,7 +336,7 @@ class LnaAnalyticsService
     }
 
     /**
-     * @return array{predictive_skills_gap: string, prescriptive_training_recommendation: string|null, training_needed: bool|null, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, mixed>}
+     * @return array{prescriptive_skills_gap: string, predictive_training_recommendation: string|null, training_needed: bool|null, training_need_probability: float|null, analytics_model_version: string, recommendations: array<int, mixed>}
      */
     private function fallbackAnalytics(LearningNeedsAnalysis $entry): array
     {
@@ -362,9 +364,9 @@ class LnaAnalyticsService
         };
 
         return [
-            'predictive_skills_gap' => $gapSummary,
-            'prescriptive_training_recommendation' => $trainingNeeded === true
-                ? $fallback['prescriptive_training_recommendation']
+            'prescriptive_skills_gap' => $gapSummary,
+            'predictive_training_recommendation' => $trainingNeeded === true
+                ? $fallback['predictive_training_recommendation']
                 : null,
             'training_needed' => $trainingNeeded,
             'training_need_probability' => null,

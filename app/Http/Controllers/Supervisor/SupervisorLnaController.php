@@ -76,8 +76,8 @@ class SupervisorLnaController extends Controller
                     'review_remarks' => $entry->review_remarks,
                     'reviewed_at' => $entry->reviewed_at?->toDateTimeString(),
                     'reviewed_by' => $entry->reviewer?->name,
-                    'predictive_skills_gap' => $entry->predictive_skills_gap,
-                    'prescriptive_training_recommendation' => $entry->prescriptive_training_recommendation,
+                    'prescriptive_skills_gap' => $entry->prescriptive_skills_gap,
+                    'predictive_training_recommendation' => $entry->predictive_training_recommendation,
                     'training_needed' => $entry->training_needed,
                     'training_need_probability' => $entry->training_need_probability,
                     'analytics_model_version' => $entry->analytics_model_version,
@@ -139,8 +139,8 @@ class SupervisorLnaController extends Controller
         if ($validated['status'] === 'reviewed') {
             $analytics = $analyticsService->generate($learningNeedsAnalysis);
             $learningNeedsAnalysis->fill([
-                'predictive_skills_gap' => $analytics['predictive_skills_gap'],
-                'prescriptive_training_recommendation' => $analytics['prescriptive_training_recommendation'],
+                'prescriptive_skills_gap' => $analytics['prescriptive_skills_gap'],
+                'predictive_training_recommendation' => $analytics['predictive_training_recommendation'],
                 'training_needed' => $analytics['training_needed'],
                 'training_need_probability' => $analytics['training_need_probability'],
                 'analytics_model_version' => $analytics['analytics_model_version'],
@@ -149,8 +149,8 @@ class SupervisorLnaController extends Controller
         } else {
             $analytics = ['recommendations' => []];
             $learningNeedsAnalysis->fill([
-                'predictive_skills_gap' => null,
-                'prescriptive_training_recommendation' => null,
+                'prescriptive_skills_gap' => null,
+                'predictive_training_recommendation' => null,
                 'training_needed' => null,
                 'training_need_probability' => null,
                 'analytics_model_version' => null,

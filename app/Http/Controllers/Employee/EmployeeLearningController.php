@@ -33,8 +33,8 @@ class EmployeeLearningController extends Controller
         return $entries
             ->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
                 && $entry->analytics_generated_at !== null
-                && $entry->predictive_skills_gap !== null
-                && $entry->prescriptive_training_recommendation !== null)
+                && $entry->prescriptive_skills_gap !== null
+                && $entry->predictive_training_recommendation !== null)
             ->map(fn (LearningNeedsAnalysis $entry) => $this->recommendationProfile($entry))
             ->values();
     }
@@ -251,8 +251,8 @@ class EmployeeLearningController extends Controller
             ->where('user_id', $user->id)
             ->where('status', 'reviewed')
             ->whereNotNull('analytics_generated_at')
-            ->whereNotNull('predictive_skills_gap')
-            ->whereNotNull('prescriptive_training_recommendation')
+            ->whereNotNull('prescriptive_skills_gap')
+            ->whereNotNull('predictive_training_recommendation')
             ->with('recommendations')
             ->first();
 
@@ -285,7 +285,7 @@ class EmployeeLearningController extends Controller
             'user_id' => $user->id,
             'learning_needs_analysis_id' => $lna->id,
             'employee_id' => $user->employee_id,
-            'training_title' => $recommendation['prescriptive_training_recommendation'],
+            'training_title' => $recommendation['predictive_training_recommendation'],
             'training_type' => in_array($recommendation['training_type'] ?? null, ['Invitational', 'In-house'], true)
                 ? $recommendation['training_type']
                 : 'In-house',

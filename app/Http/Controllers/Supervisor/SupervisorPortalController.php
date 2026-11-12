@@ -27,7 +27,7 @@ class SupervisorPortalController extends Controller
         $lapEntries = LearningActionPlan::query()->whereIn('user_id', $teamIds)->with('user')->latest()->get();
         $analyticsEntries = $lnaEntries->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
             && $entry->analytics_generated_at !== null
-            && $entry->predictive_skills_gap !== null);
+            && $entry->prescriptive_skills_gap !== null);
         $scoredAnalyticsEntries = $analyticsEntries->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->training_need_probability !== null);
         $analyticsWatchlist = $analyticsEntries
             ->sortByDesc(fn (LearningNeedsAnalysis $entry): float => (float) ($entry->training_need_probability ?? -1))
@@ -37,8 +37,8 @@ class SupervisorPortalController extends Controller
                     'employee_name' => $entry->user->name,
                     'employee_id' => $entry->employee_id,
                     'focus_area' => $entry->focus_area,
-                    'predictive_skills_gap' => $entry->predictive_skills_gap,
-                    'prescriptive_training_recommendation' => $entry->prescriptive_training_recommendation,
+                    'prescriptive_skills_gap' => $entry->prescriptive_skills_gap,
+                    'predictive_training_recommendation' => $entry->predictive_training_recommendation,
                     'training_needed' => $entry->training_needed,
                     'training_need_probability' => $entry->training_need_probability === null ? null : (float) $entry->training_need_probability,
                     'analytics_model_version' => $entry->analytics_model_version,

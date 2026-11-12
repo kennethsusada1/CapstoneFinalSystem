@@ -34,7 +34,7 @@ function PredictiveSignal({ recommendation }) {
         </div>
         <div className="emp-signal-copy">
             <StatusPill tone={recommendation.training_needed ? 'warning' : 'success'}>{recommendation.training_needed ? 'Training indicated' : 'No immediate need'}</StatusPill>
-            <div><span>Identified skills gap</span><strong>{recommendation.predictive_skills_gap || 'Not available'}</strong></div>
+            <div><span>Identified skills gap</span><strong>{recommendation.prescriptive_skills_gap || 'Not available'}</strong></div>
             <div><span>Analytics status</span><strong>{recommendation.model_version || 'rule-based-ratings-v1'}</strong></div>
         </div>
     </div>;
@@ -89,7 +89,7 @@ export default function Dashboard({ stats, progressCards, charts, recentTraining
                             <span className="emp-muted">{item.confidence_score == null ? 'Confidence unavailable' : `${(Number(item.confidence_score) * 100).toFixed(1)}% confidence`}</span>
                         </div>
                         <div className="emp-muted" style={{ marginTop: '.55rem' }}>IDENTIFIED SKILLS GAP</div>
-                        <div className="emp-copy" style={{ marginTop: '.3rem' }}>{item.predictive_skills_gap}</div>
+                        <div className="emp-copy" style={{ marginTop: '.3rem' }}>{item.prescriptive_skills_gap}</div>
                         <div className="emp-muted" style={{ marginTop: '.45rem' }}>{item.model_version || 'rule-based-ratings-v1'}</div>
                     </div>)}
                 </div>
@@ -98,7 +98,7 @@ export default function Dashboard({ stats, progressCards, charts, recentTraining
                 <div className="emp-list">
                     {(recommendations ?? []).length === 0 && <EmptyState icon="bi-lightbulb" title="No training recommendation yet" text="A recommendation will appear after supervisor review." />}
                     {(recommendations ?? []).slice(0, 4).map((item, index) => <div className="emp-item" key={`${item.lna_id}-training-${index}`}>
-                        <div className="emp-title">{item.prescriptive_training_recommendation}</div>
+                        <div className="emp-title">{item.predictive_training_recommendation}</div>
                         <div className="emp-muted" style={{ marginTop: '.3rem' }}>{item.provider} · {item.training_type}</div>
                         <div className="emp-copy" style={{ marginTop: '.45rem' }}>{item.rationale}</div>
                         {(item.ranked_recommendations ?? []).length > 1 && <div className="emp-list" style={{ marginTop: '.65rem' }}>{item.ranked_recommendations.slice(1, 4).map((ranked) => <div className="emp-row" key={`${item.lna_id}-${ranked.rank}`}><span className="emp-copy">#{ranked.rank} {ranked.training_title}</span><StatusPill tone="info">{(Number(ranked.probability) * 100).toFixed(1)}%</StatusPill></div>)}</div>}

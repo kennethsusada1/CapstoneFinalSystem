@@ -18,8 +18,8 @@ class StaticLnaAnalyticsService
             'lna_id' => $entry->id,
             'focus_area' => $entry->focus_area,
             'priority_level' => $entry->priority_level,
-            'predictive_skills_gap' => $entry->predictive_skills_gap,
-            'prescriptive_training_recommendation' => $entry->prescriptive_training_recommendation,
+            'prescriptive_skills_gap' => $entry->prescriptive_skills_gap,
+            'predictive_training_recommendation' => $entry->predictive_training_recommendation,
             'training_type' => $profile['training_type'],
             'provider' => $profile['provider'],
             'track' => $profile['category'],
@@ -30,7 +30,7 @@ class StaticLnaAnalyticsService
     /**
      * Generate static analytics after both employee and supervisor assessments exist.
      *
-     * @return array{predictive_skills_gap: string, prescriptive_training_recommendation: string}
+     * @return array{prescriptive_skills_gap: string, predictive_training_recommendation: string}
      */
     public function generate(LearningNeedsAnalysis $entry): array
     {
@@ -46,10 +46,10 @@ class StaticLnaAnalyticsService
         $lowRatedSkills = $lowFromEmployee->merge($lowFromSupervisor)->unique()->sort()->values();
 
         return [
-            'predictive_skills_gap' => $lowRatedSkills->isEmpty()
+            'prescriptive_skills_gap' => $lowRatedSkills->isEmpty()
                 ? $profile['skills_gap']
                 : $lowRatedSkills->implode(', '),
-            'prescriptive_training_recommendation' => $profile['training'],
+            'predictive_training_recommendation' => $profile['training'],
         ];
     }
 

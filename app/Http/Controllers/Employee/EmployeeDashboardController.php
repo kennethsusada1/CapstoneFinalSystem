@@ -35,7 +35,12 @@ class EmployeeDashboardController extends Controller
         $availableRecommendationCount = 0;
 
         foreach ($recommendations as $recommendation) {
-            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $recommendation['prescriptive_training_recommendation']);
+            $trainingTitle = $recommendation['predictive_training_recommendation'] ?? null;
+            if ($trainingTitle === null) {
+                continue;
+            }
+
+            $matchedTraining = $trainings->first(fn (TrainingApplication $training) => $training->training_title === $trainingTitle);
 
             if (! $matchedTraining) {
                 $availableRecommendationCount++;
@@ -95,10 +100,10 @@ class EmployeeDashboardController extends Controller
         $recommendations = $lnaEntries
             ->filter(fn (LearningNeedsAnalysis $entry): bool => $entry->status === 'reviewed'
                 && $entry->analytics_generated_at !== null
-                && $entry->predictive_skills_gap !== null
-                && $entry->prescriptive_training_recommendation !== null)
+                && $entry->prescriptive_skills_gap !== null
+                && $entry->predictive_training_recommendation !== null)
             ->map(fn (LearningNeedsAnalysis $item) => $this->recommendationProfile($item))
-            ->unique(fn (array $item) => $item['focus_area'].'|'.$item['prescriptive_training_recommendation'])
+            ->unique(fn (array $item) => $item['focus_area'].'|'.($item['predictive_training_recommendation'] ?? ''))
             ->values();
 
         $completedByMonth = $trainings
@@ -116,7 +121,7 @@ class EmployeeDashboardController extends Controller
             ],
             'progressCards' => [
                 [
-                    'label' => 'Predictive Skills Gaps',
+                    'label' => 'Prescriptive Skills Gaps',
                     'value' => $recommendations->count(),
                     'suffix' => '',
                 ],
