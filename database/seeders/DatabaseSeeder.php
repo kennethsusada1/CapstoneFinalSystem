@@ -84,5 +84,7 @@ class DatabaseSeeder extends Seeder
                 ],
             );
         }
+
+        $this->call(DemoWorkflowSeeder::class);
     }
 }
