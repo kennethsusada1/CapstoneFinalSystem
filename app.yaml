@@ -24,7 +24,6 @@ annotations:
     node_build_command: pnpm run build
     node_install_inputs:
     - package.json
-    - .npmrc
     node_package_manager: pnpm
     php_framework: laravel
     php_public_dir: public
