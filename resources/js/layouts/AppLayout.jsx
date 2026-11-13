@@ -65,7 +65,7 @@ export default function AppLayout({ children, title, description }) {
         };
     }, [fetchNotifications]);
 
-    const sidebarWidth = collapsed ? 68 : 280;
+    const sidebarWidth = collapsed ? 64 : 252;
 
     return (
         <ToastProvider>
@@ -104,14 +104,14 @@ export default function AppLayout({ children, title, description }) {
                 </div>
 
                 <style>{`
-                    .admin-content { flex: 1; min-width: 0; padding: 1rem 1.5rem; overflow: auto; }
+                    .admin-content { flex: 1; min-width: 0; padding: 1.25rem clamp(1rem, 2.4vw, 2rem); overflow: auto; }
                     @keyframes ld-progress {
                         from { transform: translateX(-18%); }
                         to { transform: translateX(38%); }
                     }
                     @media (max-width: 767px) {
                         .app-main { margin-left: 0 !important; }
-                        .admin-content { padding: 0.75rem 1rem; }
+                        .admin-content { padding: 1rem; }
                     }
                     @media (max-width: 480px) {
                         .admin-content { padding: 0.65rem 0.75rem; }

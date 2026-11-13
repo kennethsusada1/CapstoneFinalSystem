@@ -3,30 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import NotificationPanel from '@/components/NotificationPanel';
 import defaultAvatar from '@/components/defaultAvatar';
 
-function Breadcrumb({ title, description }) {
-    const segments = description ? description.split(/[\/·>]+/).map((item) => item.trim()).filter(Boolean) : [];
-
-    return (
-        <nav style={{ display: 'flex', alignItems: 'center', fontSize: '0.78rem', minWidth: 0 }}>
-            <Link href="/" className="tb-bc-home" style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--admin-text-muted)', textDecoration: 'none' }}>
-                <i className="bi bi-house-door" style={{ fontSize: '0.72rem' }} />
-                <span>Home</span>
-            </Link>
-            {segments.map((seg, i) => (
-                <span key={`${seg}-${i}`} style={{ display: 'flex', alignItems: 'center' }} className="tb-bc-past">
-                    <i className="bi bi-chevron-right tb-bc-sep" style={{ fontSize: '0.58rem', color: 'var(--admin-text-muted)', margin: '0 3px' }} />
-                    <span style={{ color: 'var(--admin-text-muted)', fontWeight: 500 }}>{seg}</span>
-                </span>
-            ))}
-            <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-                <i className="bi bi-chevron-right tb-bc-sep" style={{ fontSize: '0.58rem', color: 'var(--admin-text-muted)', margin: '0 3px' }} />
-                <span className="tb-bc-current" style={{ color: 'var(--admin-text-primary)', fontWeight: 700, fontSize: '0.8rem' }}>{title}</span>
-            </span>
-        </nav>
-    );
-}
-
-export default function Topbar({ title, description, darkMode, onToggleDarkMode, onMobileMenuToggle, notifications, setNotifications }) {
+export default function Topbar({ title, darkMode, onToggleDarkMode, onMobileMenuToggle, notifications, setNotifications }) {
     const { auth } = usePage().props;
     const user = auth?.user;
     const avatar = user?.avatar || user?.profile_photo_url || defaultAvatar(user?.name);
@@ -51,12 +28,12 @@ export default function Topbar({ title, description, darkMode, onToggleDarkMode,
     };
 
     return (
-        <header className="tb-root" style={{ position: 'sticky', top: 0, zIndex: 900, backdropFilter: 'blur(16px)', background: 'var(--admin-topbar, rgba(10,15,26,0.88))', borderBottom: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.65rem 1.25rem' }}>
+        <header className="tb-root" style={{ position: 'sticky', top: 0, zIndex: 900, background: 'var(--admin-topbar, var(--admin-bg-primary))', borderBottom: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.75rem 1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
                 <button type="button" className="tb-hamburger" onClick={onMobileMenuToggle} style={{ display: 'none', width: 32, height: 32, borderRadius: 10, border: '1px solid var(--admin-border)', background: 'var(--admin-card)', color: 'var(--admin-text-secondary)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                     <i className="bi bi-list" />
                 </button>
-                <Breadcrumb title={title} description={description} />
+                <div className="tb-page-title">{title}</div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -92,18 +69,18 @@ export default function Topbar({ title, description, darkMode, onToggleDarkMode,
             </div>
 
             <style>{`
+                .tb-page-title { min-width: 0; color: var(--admin-text-primary); font-size: 0.92rem; font-weight: 650; }
                 @media (max-width: 767px) {
                     .tb-hamburger { display: flex !important; }
                     .tb-root { padding: 0.4rem 0.85rem !important; }
                     .tb-info { display: none !important; }
-                    .tb-bc-home, .tb-bc-past, .tb-bc-sep { display: none !important; }
-                    .tb-bc-current { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; display: block; }
+                    .tb-page-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; display: block; }
                 }
                 @media (max-width: 420px) {
                     .tb-root { gap: .5rem !important; }
                     .tb-root > div:last-child { gap: .35rem !important; }
                     .tb-root > div:last-child > button:first-child { display: none; }
-                    .tb-bc-current { max-width: 46vw; }
+                    .tb-page-title { max-width: 46vw; }
                 }
             `}</style>
         </header>

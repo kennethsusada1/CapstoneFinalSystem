@@ -11,8 +11,8 @@ export default function Index({ recommendations, notifications, programs }) {
     return (
         <AppLayout title="Training Recommendations" description="Employee / LNA Gap Analysis">
             <div className="emp-page">
-                <PageHero kicker="LNA GAP ANALYSIS" title="Your skills gap and recommended training." description="Review competency gaps and training recommendations recorded after supervisor review. Model probabilities appear only when a validated logistic model is available." href="/employee/training-applications" action="Apply for training" icon="bi-journal-arrow-up" />
-                <section className="emp-grid-2">
+                <PageHero kicker="RECOMMENDATIONS" title="Training for your learning needs." description="Review your supervisor-endorsed recommendations and available programs." href="/employee/training-applications" action="Apply for training" icon="bi-journal-arrow-up" />
+                <section>
                     <Panel
                         title="Training Notices"
                         subtitle="Current reminders and required actions"
@@ -26,7 +26,6 @@ export default function Index({ recommendations, notifications, programs }) {
                             </div>)}
                         </div>
                     </Panel>
-                    <Panel title="How Recommendations Work" subtitle="Reviewed ratings with validated model support when available"><div className="emp-list"><div className="emp-item"><div className="emp-title">1. Supervisor completes the review</div><div className="emp-copy">Your analysis appears after the LNA is reviewed by your assigned supervisor.</div></div><div className="emp-item"><div className="emp-title">2. Competency gaps are identified</div><div className="emp-copy">The system checks employee and supervisor ratings. It uses a reviewed logistic model only after validation on real historical records; otherwise it reports a rule-based gap without a probability.</div></div><div className="emp-item"><div className="emp-title">3. Training is confirmed through the workflow</div><div className="emp-copy">The Secretariat confirms an actual program and schedule, and HRDC reviews the proposed program before approval.</div></div></div></Panel>
                 </section>
                 <Panel title="Supervisor-Reviewed Recommendations" subtitle="Actionable recommendations generated after LNA review">
                     <div className="emp-grid-3">
@@ -34,11 +33,8 @@ export default function Index({ recommendations, notifications, programs }) {
                         {(recommendations ?? []).map((item) => <div className="emp-item" key={`${item.lna_id}-${item.predictive_training_recommendation}`}>
                             <div className="emp-row"><StatusPill>{item.track}</StatusPill><StatusPill tone={item.has_application ? 'success' : 'warning'}>{item.has_application ? 'Applied' : 'Available'}</StatusPill></div>
                             <div className="emp-muted" style={{ marginTop: '.65rem' }}>IDENTIFIED SKILLS GAP</div><div className="emp-copy" style={{ marginTop: '.25rem' }}>{item.prescriptive_skills_gap}</div>
-                            <div className="emp-muted" style={{ marginTop: '.7rem' }}>MODEL CONFIDENCE</div><div className="emp-title" style={{ marginTop: '.25rem', fontSize: '.84rem' }}>{item.confidence_score == null ? 'Not available' : `${(Number(item.confidence_score) * 100).toFixed(1)}%`}</div>
                             <div className="emp-muted" style={{ marginTop: '.7rem' }}>PREDICTED TRAINING RECOMMENDATION</div><div className="emp-title" style={{ marginTop: '.25rem', fontSize: '.84rem' }}>{item.predictive_training_recommendation}</div>
-                            <div className="emp-muted" style={{ marginTop: '.35rem' }}>{item.provider || 'Provider to be confirmed'} · {item.training_type} · {item.model_version || 'rule-based-ratings-v1'}</div>
-                            <div className="emp-copy" style={{ marginTop: '.4rem' }}>{item.rationale}</div>
-                            {(item.ranked_recommendations ?? []).length > 1 && <div className="emp-list" style={{ marginTop: '.75rem' }}>{item.ranked_recommendations.slice(1).map((ranked) => <div className="emp-item" key={`${item.lna_id}-${ranked.rank}`}><div className="emp-row"><div className="emp-title">#{ranked.rank} {ranked.training_title}</div><StatusPill tone="info">{(Number(ranked.probability) * 100).toFixed(1)}%</StatusPill></div><div className="emp-muted" style={{ marginTop: '.25rem' }}>{ranked.competency_name}</div></div>)}</div>}
+                            <div className="emp-muted" style={{ marginTop: '.35rem' }}>{item.provider || 'Provider to be confirmed'} / {item.training_type}</div>
                             {!item.has_application && <Link className="emp-button" style={{ marginTop: '.7rem' }} href="/employee/training-applications"><i className="bi bi-send" />Apply now</Link>}
                         </div>)}
                     </div>

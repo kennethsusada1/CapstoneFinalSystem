@@ -14,7 +14,7 @@
     --admin-accent: #3b82f6;
     --admin-radius: 12px;
     --admin-radius-lg: 18px;
-    --admin-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+    --admin-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 }
 
 :root[data-theme='light'] {
@@ -53,9 +53,7 @@ body {
     overflow-x: hidden;
     font-family: 'Inter', system-ui, sans-serif;
     color: var(--admin-text-primary);
-    background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.07), transparent 28%),
-        linear-gradient(180deg, var(--admin-bg-primary) 0%, var(--admin-bg-secondary) 100%);
+    background: var(--admin-bg-primary);
 }
 
 a,
@@ -320,4 +318,135 @@ button:focus-visible {
     outline: none;
     border-color: var(--admin-accent) !important;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+/* Shared, restrained surface styles across role dashboards. */
+.sys-page,
+.emp-page,
+.sec-page,
+.sup-page,
+.hr-page {
+    gap: 0.9rem !important;
+}
+
+.sys-hero,
+.emp-hero,
+.sec-hero,
+.sup-hero,
+.hr-hero,
+.lna-hero {
+    min-height: auto !important;
+    align-items: center !important;
+    padding: 1.2rem 1.35rem !important;
+    background: var(--admin-card) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-left: 3px solid var(--admin-accent) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.sys-hero::after,
+.emp-hero::after,
+.sec-hero::after,
+.sup-hero::after,
+.hr-hero::after,
+.lna-hero::after {
+    display: none !important;
+}
+
+.sys-hero h1,
+.emp-hero h1,
+.sec-hero h1,
+.sup-hero h1,
+.hr-hero h1,
+.lna-hero h1 {
+    margin: 0.3rem 0 !important;
+    color: var(--admin-text-primary) !important;
+    font-family: Inter, system-ui, sans-serif !important;
+    font-size: clamp(1.35rem, 2.8vw, 1.8rem) !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.035em !important;
+}
+
+.sys-hero p,
+.emp-hero p,
+.sec-hero p,
+.sup-hero p,
+.hr-hero p,
+.lna-hero p {
+    max-width: 680px !important;
+    color: var(--admin-text-secondary) !important;
+    font-size: 0.78rem !important;
+    line-height: 1.55 !important;
+}
+
+.sys-kicker,
+.emp-kicker,
+.sec-kicker,
+.sup-kicker,
+.hr-kicker,
+.lna-kicker {
+    color: var(--admin-accent) !important;
+    font-size: 0.62rem !important;
+    letter-spacing: 0.08em !important;
+}
+
+.sys-hero-action,
+.emp-hero-action,
+.sec-hero-action,
+.sup-hero-action,
+.hr-action {
+    padding: 0.62rem 0.82rem !important;
+    color: #fff !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: var(--admin-accent) !important;
+    box-shadow: none !important;
+    font-size: 0.74rem !important;
+}
+
+.sys-panel,
+.emp-panel,
+.sec-panel,
+.sup-panel,
+.hr-panel {
+    padding: 0.95rem 1rem !important;
+    background: var(--admin-card) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.sys-stat,
+.emp-stat,
+.sec-stat,
+.sup-stat,
+.hr-stat {
+    background: var(--admin-card) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.sys-item,
+.emp-item,
+.sec-item,
+.sup-list-item,
+.hr-item {
+    border-color: var(--admin-border) !important;
+    border-radius: 9px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 700px) {
+    .sys-hero,
+    .emp-hero,
+    .sec-hero,
+    .sup-hero,
+    .hr-hero,
+    .lna-hero {
+        align-items: flex-start !important;
+        padding: 1rem !important;
+    }
 }
