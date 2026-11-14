@@ -1,33 +1,23 @@
-# Custom Laravel build definition for Wasmer.
-# The frontend dependencies are needed only while Vite compiles the assets;
-# removing them before export keeps the runtime package within Wasmer's build limit.
-load("//anybuild/tools:laravel.bzl", "laravel_build", "laravel_config", "laravel_serve")
+load("//anybuild/tools:php.bzl", "php_build", "php_config", "php_serve")
 
-config = laravel_config(
+config = php_config(
     schema = 1,
     commands = {"after_deploy": "php artisan migrate --force --seed"},
-    node_package_manager = "pnpm",
-    node_build_command = "pnpm run build",
-    node_version = "24",
-    php_framework = "laravel",
     php_version = "8.3.29",
     php_public_dir = "public",
     composer_enable = True,
     composer_build_script = "post-update-cmd",
+    phpix = True,
 )
 
-build = laravel_build(config)
+build = php_build(config)
 
-laravel_serve(
+php_serve(
     config,
     build,
     name = "capstoneproject2026-test",
     build_pre = [
         copy("composer.json", "/app/composer.json"),
         copy("composer.lock", "/app/composer.lock"),
-        copy("package.json", "/app/package.json"),
-        copy("pnpm-workspace.yaml", "/app/pnpm-workspace.yaml"),
-        copy(".npmrc", "/app/.npmrc"),
     ],
-    build_post = [run("rm -rf node_modules", group = "build")],
 )

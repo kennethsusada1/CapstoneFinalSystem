@@ -25,6 +25,12 @@ annotations:
     phpix: true
     commands:
       after_deploy: php artisan migrate --force --seed
+      build: composer run-script post-update-cmd
+      install: composer install --optimize-autoloader --ignore-platform-reqs --no-scripts --no-interaction
+      start: php -S 0.0.0.0:8080 -t public
+    php_framework: laravel
   anybuild.run/provider: php
-  anybuild.run/version: 0.28.2
-  wasmer.io/version: 7.4.0
+  anybuild.run/version: 0.33.3
+  wasmer.io/version: 7.5.0
+enableDatabase: true
+enable_email: true
