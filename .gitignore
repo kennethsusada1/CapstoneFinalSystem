@@ -1,7 +1,6 @@
 /.phpunit.cache
 /bootstrap/ssr
 /node_modules
-/public/build
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
@@ -16,6 +15,7 @@ __pycache__/
 .env
 .env.backup
 .env.production
+.npmrc
 .phpactor.json
 .phpunit.result.cache
 Homestead.json

@@ -21,15 +21,10 @@ annotations:
     composer_build_script: post-update-cmd
     composer_enable: true
     name: out
-    node_build_command: pnpm run build
-    node_install_inputs:
-    - package.json
-    node_package_manager: pnpm
-    php_framework: laravel
     php_public_dir: public
     phpix: true
     commands:
       after_deploy: php artisan migrate --force --seed
-  anybuild.run/provider: laravel
+  anybuild.run/provider: php
   anybuild.run/version: 0.28.2
   wasmer.io/version: 7.4.0
