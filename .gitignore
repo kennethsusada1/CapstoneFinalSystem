@@ -16,7 +16,6 @@ __pycache__/
 .env
 .env.backup
 .env.production
-.npmrc
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
